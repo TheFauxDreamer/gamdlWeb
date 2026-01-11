@@ -1,3 +1,4 @@
+# maybe with some edits. mayybe not.
 # Gamdl (Glomatico's Apple Music Downloader)
 
 [![PyPI version](https://img.shields.io/pypi/v/gamdl?color=blue)](https://pypi.org/project/gamdl/)
