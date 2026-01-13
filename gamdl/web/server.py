@@ -22,6 +22,7 @@ from gamdl.downloader.downloader_song import AppleMusicSongDownloader
 from gamdl.downloader.downloader_music_video import AppleMusicMusicVideoDownloader
 from gamdl.downloader.downloader_uploaded_video import AppleMusicUploadedVideoDownloader
 from gamdl.downloader.enums import DownloadMode, RemuxMode
+from gamdl.downloader.exceptions import GamdlError
 from gamdl.downloader.types import DownloadItem
 from gamdl.interface.enums import SongCodec, MusicVideoResolution, CoverFormat
 from gamdl.interface.interface import AppleMusicInterface
@@ -37,6 +38,9 @@ app = FastAPI(title="gamdl Web UI")
 
 # Store active download sessions
 active_sessions: Dict[str, dict] = {}
+
+# Store cancellation flags for sessions
+cancellation_flags: Dict[str, bool] = {}
 
 
 class DownloadRequest(BaseModel):
@@ -130,6 +134,7 @@ async def root():
                 font-size: 16px;
                 cursor: pointer;
                 font-weight: 500;
+                margin-right: 10px;
             }
             button:hover {
                 background: #0051d5;
@@ -137,6 +142,20 @@ async def root():
             button:disabled {
                 background: #ccc;
                 cursor: not-allowed;
+            }
+            button.cancel {
+                background: #ff3b30;
+            }
+            button.cancel:hover {
+                background: #d32f2f;
+            }
+            button.cancel:disabled {
+                background: #ccc;
+            }
+            .button-group {
+                display: flex;
+                align-items: center;
+                margin-top: 20px;
             }
             .progress-container {
                 display: none;
@@ -190,9 +209,34 @@ async def root():
                 background: #34c759;
                 animation: pulse 2s infinite;
             }
+            .status-indicator.cancelled {
+                background: #ff9500;
+            }
             @keyframes pulse {
                 0%, 100% { opacity: 1; }
                 50% { opacity: 0.5; }
+            }
+            .progress-stats {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+            .stat-item {
+                background: white;
+                padding: 10px;
+                border-radius: 4px;
+                text-align: center;
+            }
+            .stat-value {
+                font-size: 24px;
+                font-weight: bold;
+                color: #007aff;
+            }
+            .stat-label {
+                font-size: 12px;
+                color: #666;
+                margin-top: 5px;
             }
             .collapsible {
                 margin-top: 20px;
@@ -316,13 +360,38 @@ async def root():
                     </div>
                 </div>
 
-                <button type="submit" id="downloadBtn">Start Download</button>
+                <div class="button-group">
+                    <button type="submit" id="downloadBtn">Start Download</button>
+                    <button type="button" id="cancelBtn" class="cancel" disabled>Cancel</button>
+                </div>
             </form>
 
             <div id="progressContainer" class="progress-container">
                 <div class="status-bar">
                     <div id="statusIndicator" class="status-indicator"></div>
                     <div id="statusText">Idle</div>
+                </div>
+                <div class="progress-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalTracks">0</div>
+                        <div class="stat-label">Total Tracks</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="completedTracks">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="skippedTracks">0</div>
+                        <div class="stat-label">Skipped</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="failedTracks">0</div>
+                        <div class="stat-label">Failed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="progressPercent">0%</div>
+                        <div class="stat-label">Progress</div>
+                    </div>
                 </div>
                 <div id="progressLog" class="progress-log"></div>
             </div>
@@ -331,6 +400,10 @@ async def root():
         <script>
             let ws = null;
             let sessionId = null;
+            let totalTracks = 0;
+            let completedTracks = 0;
+            let skippedTracks = 0;
+            let failedTracks = 0;
 
             function toggleCollapsible(header) {
                 const content = header.nextElementSibling;
@@ -344,15 +417,82 @@ async def root():
                 line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
                 log.appendChild(line);
                 log.scrollTop = log.scrollHeight;
+
+                // Update stats based on log messages
+                updateStatsFromLog(message, level);
             }
 
-            function updateStatus(text, active = false) {
+            function updateStatsFromLog(message, level) {
+                // Extract total tracks from "Found X track(s) to download"
+                const totalMatch = message.match(/Found (\d+) track\(s\) to download/);
+                if (totalMatch) {
+                    totalTracks = parseInt(totalMatch[1]);
+                    document.getElementById('totalTracks').textContent = totalTracks;
+                }
+
+                // Count completed tracks
+                if (message.includes('Completed:') && level === 'success') {
+                    completedTracks++;
+                    document.getElementById('completedTracks').textContent = completedTracks;
+                }
+
+                // Count skipped tracks (file exists, not streamable, etc.)
+                if (message.includes('Skipped:') && level === 'warning') {
+                    skippedTracks++;
+                    document.getElementById('skippedTracks').textContent = skippedTracks;
+                }
+
+                // Count failed tracks (unexpected errors)
+                if (message.includes('Error:') && level === 'error') {
+                    failedTracks++;
+                    document.getElementById('failedTracks').textContent = failedTracks;
+                }
+
+                // Update progress percentage
+                if (totalTracks > 0) {
+                    const percent = Math.round(((completedTracks + skippedTracks + failedTracks) / totalTracks) * 100);
+                    document.getElementById('progressPercent').textContent = percent + '%';
+                }
+            }
+
+            function resetStats() {
+                totalTracks = 0;
+                completedTracks = 0;
+                skippedTracks = 0;
+                failedTracks = 0;
+                document.getElementById('totalTracks').textContent = '0';
+                document.getElementById('completedTracks').textContent = '0';
+                document.getElementById('skippedTracks').textContent = '0';
+                document.getElementById('failedTracks').textContent = '0';
+                document.getElementById('progressPercent').textContent = '0%';
+            }
+
+            function updateStatus(text, active = false, cancelled = false) {
                 document.getElementById('statusText').textContent = text;
                 const indicator = document.getElementById('statusIndicator');
+                indicator.classList.remove('active', 'cancelled');
                 if (active) {
                     indicator.classList.add('active');
-                } else {
-                    indicator.classList.remove('active');
+                } else if (cancelled) {
+                    indicator.classList.add('cancelled');
+                }
+            }
+
+            async function cancelDownload() {
+                if (!sessionId) return;
+
+                try {
+                    const response = await fetch(`/api/cancel/${sessionId}`, {
+                        method: 'POST',
+                    });
+
+                    if (response.ok) {
+                        addLog('Cancellation requested...', 'warning');
+                        updateStatus('Cancelling...', false, true);
+                        document.getElementById('cancelBtn').disabled = true;
+                    }
+                } catch (error) {
+                    addLog(`Failed to cancel: ${error.message}`, 'error');
                 }
             }
 
@@ -363,6 +503,7 @@ async def root():
                 ws.onopen = () => {
                     addLog('Connected to server', 'success');
                     updateStatus('Connected - Processing...', true);
+                    document.getElementById('cancelBtn').disabled = false;
                 };
 
                 ws.onmessage = (event) => {
@@ -370,6 +511,13 @@ async def root():
 
                     if (data.type === 'log') {
                         addLog(data.message, data.level || 'info');
+
+                        // Check for cancellation message
+                        if (data.message.includes('cancelled')) {
+                            updateStatus('Cancelled', false, true);
+                            document.getElementById('downloadBtn').disabled = false;
+                            document.getElementById('cancelBtn').disabled = true;
+                        }
                     } else if (data.type === 'progress') {
                         addLog(data.message, 'info');
                     } else if (data.type === 'error') {
@@ -379,6 +527,7 @@ async def root():
                         addLog('Download completed!', 'success');
                         updateStatus('Completed', false);
                         document.getElementById('downloadBtn').disabled = false;
+                        document.getElementById('cancelBtn').disabled = true;
                     }
                 };
 
@@ -386,6 +535,7 @@ async def root():
                     addLog('WebSocket error occurred', 'error');
                     updateStatus('Connection error', false);
                     document.getElementById('downloadBtn').disabled = false;
+                    document.getElementById('cancelBtn').disabled = true;
                 };
 
                 ws.onclose = () => {
@@ -416,8 +566,10 @@ async def root():
                 };
 
                 document.getElementById('downloadBtn').disabled = true;
+                document.getElementById('cancelBtn').disabled = true;
                 document.getElementById('progressContainer').classList.add('active');
                 document.getElementById('progressLog').innerHTML = '';
+                resetStats();
 
                 addLog('Starting download session...', 'info');
                 updateStatus('Initializing...', true);
@@ -444,8 +596,12 @@ async def root():
                     addLog(`Failed to start download: ${error.message}`, 'error');
                     updateStatus('Failed to start', false);
                     document.getElementById('downloadBtn').disabled = false;
+                    document.getElementById('cancelBtn').disabled = true;
                 }
             });
+
+            // Cancel button event listener
+            document.getElementById('cancelBtn').addEventListener('click', cancelDownload);
         </script>
     </body>
     </html>
@@ -463,6 +619,7 @@ async def start_download(request: DownloadRequest):
         "logs": [],
         "websocket": None,
     }
+    cancellation_flags[session_id] = False
 
     logger.info(f"Created download session {session_id}")
 
@@ -471,6 +628,18 @@ async def start_download(request: DownloadRequest):
         status="created",
         message="Download session created. Connect to WebSocket for progress.",
     )
+
+
+@app.post("/api/cancel/{session_id}")
+async def cancel_download(session_id: str):
+    """Cancel an active download session."""
+    if session_id not in active_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    cancellation_flags[session_id] = True
+    logger.info(f"Cancellation requested for session {session_id}")
+
+    return {"status": "cancelled", "message": "Cancellation requested"}
 
 
 @app.websocket("/ws/{session_id}")
@@ -516,6 +685,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         session["status"] = "completed"
         if session_id in active_sessions:
             del active_sessions[session_id]
+        if session_id in cancellation_flags:
+            del cancellation_flags[session_id]
 
 
 async def run_download_session(session_id: str, session: dict, websocket: WebSocket):
@@ -628,6 +799,11 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
 
         # Process each URL
         for url_index, url in enumerate(request.urls, 1):
+            # Check for cancellation
+            if cancellation_flags.get(session_id, False):
+                await send_log("Download cancelled by user", "warning")
+                break
+
             await send_log(f"[URL {url_index}/{len(request.urls)}] Processing: {url}")
 
             try:
@@ -649,6 +825,11 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
 
                 # Download each item
                 for download_index, download_item in enumerate(download_queue, 1):
+                    # Check for cancellation before each download
+                    if cancellation_flags.get(session_id, False):
+                        await send_log("Download cancelled by user", "warning")
+                        break
+
                     # Safely extract media title
                     if isinstance(download_item, DownloadItem) and download_item.media_metadata:
                         media_title = download_item.media_metadata.get("attributes", {}).get("name", "Unknown Title")
@@ -661,7 +842,12 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
                     try:
                         await downloader.download(download_item)
                         await send_log(f"[Track {download_index}/{len(download_queue)}] Completed: {media_title}", "success")
+                    except GamdlError as e:
+                        # Expected errors (file exists, not streamable, etc.) - show as warnings
+                        await send_log(f"[Track {download_index}/{len(download_queue)}] Skipped: {str(e)}", "warning")
+                        continue
                     except Exception as e:
+                        # Unexpected errors - show as errors
                         await send_log(f"[Track {download_index}/{len(download_queue)}] Error: {str(e)}", "error")
                         continue
 
