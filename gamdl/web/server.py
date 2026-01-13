@@ -17,7 +17,16 @@ from pydantic import BaseModel
 from gamdl.api.apple_music_api import AppleMusicApi
 from gamdl.api.itunes_api import ItunesApi
 from gamdl.downloader.downloader import AppleMusicDownloader
+from gamdl.downloader.downloader_base import AppleMusicBaseDownloader
+from gamdl.downloader.downloader_song import AppleMusicSongDownloader
+from gamdl.downloader.downloader_music_video import AppleMusicMusicVideoDownloader
+from gamdl.downloader.downloader_uploaded_video import AppleMusicUploadedVideoDownloader
+from gamdl.downloader.enums import DownloadMode, RemuxMode
+from gamdl.interface.enums import SongCodec, MusicVideoResolution, CoverFormat
 from gamdl.interface.interface import AppleMusicInterface
+from gamdl.interface.interface_song import AppleMusicSongInterface
+from gamdl.interface.interface_music_video import AppleMusicMusicVideoInterface
+from gamdl.interface.interface_uploaded_video import AppleMusicUploadedVideoInterface
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -548,17 +557,70 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
 
         # Initialize interface
         interface = AppleMusicInterface(api, itunes_api)
+        song_interface = AppleMusicSongInterface(interface)
+        music_video_interface = AppleMusicMusicVideoInterface(interface)
+        uploaded_video_interface = AppleMusicUploadedVideoInterface(interface)
 
-        # Initialize downloader
+        # Initialize downloaders
         output_path = request.output_path or "./downloads"
         temp_path = request.temp_path or "./temp"
 
-        downloader = AppleMusicDownloader(
-            interface=interface,
+        # Parse enum values
+        cover_format = CoverFormat.JPG
+        if request.cover_format:
+            try:
+                cover_format = CoverFormat[request.cover_format.upper()]
+            except KeyError:
+                pass
+
+        song_codec = SongCodec.AAC_LEGACY
+        if request.song_codec:
+            try:
+                song_codec = SongCodec[request.song_codec.upper().replace('-', '_')]
+            except KeyError:
+                pass
+
+        music_video_resolution = MusicVideoResolution.R1080P
+        if request.music_video_resolution:
+            try:
+                music_video_resolution = MusicVideoResolution[f"R{request.music_video_resolution.upper()}"]
+            except KeyError:
+                pass
+
+        base_downloader = AppleMusicBaseDownloader(
             output_path=output_path,
             temp_path=temp_path,
-            no_cover=request.no_cover,
-            extra_tags=request.extra_tags,
+            wvd_path=None,
+            save_cover=not request.no_cover,
+            cover_size=request.cover_size or 1200,
+            cover_format=cover_format,
+        )
+
+        song_downloader = AppleMusicSongDownloader(
+            base_downloader=base_downloader,
+            interface=song_interface,
+            codec=song_codec,
+            fetch_extra_tags=request.extra_tags,
+            no_synced_lyrics=request.no_lyrics,
+        )
+
+        music_video_downloader = AppleMusicMusicVideoDownloader(
+            base_downloader=base_downloader,
+            interface=music_video_interface,
+            resolution=music_video_resolution,
+        )
+
+        uploaded_video_downloader = AppleMusicUploadedVideoDownloader(
+            base_downloader=base_downloader,
+            interface=uploaded_video_interface,
+        )
+
+        downloader = AppleMusicDownloader(
+            interface=interface,
+            base_downloader=base_downloader,
+            song_downloader=song_downloader,
+            music_video_downloader=music_video_downloader,
+            uploaded_video_downloader=uploaded_video_downloader,
         )
 
         await send_log(f"Processing {len(request.urls)} URL(s)...")
