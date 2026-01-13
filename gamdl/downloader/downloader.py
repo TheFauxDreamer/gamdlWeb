@@ -1,8 +1,11 @@
 import asyncio
+import logging
 import typing
 from pathlib import Path
 
 from InquirerPy import inquirer
+
+logger = logging.getLogger(__name__)
 from InquirerPy.base.control import Choice
 
 from ..interface import AppleMusicInterface

@@ -22,6 +22,7 @@ from gamdl.downloader.downloader_song import AppleMusicSongDownloader
 from gamdl.downloader.downloader_music_video import AppleMusicMusicVideoDownloader
 from gamdl.downloader.downloader_uploaded_video import AppleMusicUploadedVideoDownloader
 from gamdl.downloader.enums import DownloadMode, RemuxMode
+from gamdl.downloader.types import DownloadItem
 from gamdl.interface.enums import SongCodec, MusicVideoResolution, CoverFormat
 from gamdl.interface.interface import AppleMusicInterface
 from gamdl.interface.interface_song import AppleMusicSongInterface
@@ -648,7 +649,13 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
 
                 # Download each item
                 for download_index, download_item in enumerate(download_queue, 1):
-                    media_title = download_item.media_metadata.get("attributes", {}).get("name", "Unknown")
+                    # Safely extract media title
+                    if isinstance(download_item, DownloadItem) and download_item.media_metadata:
+                        media_title = download_item.media_metadata.get("attributes", {}).get("name", "Unknown Title")
+                    else:
+                        media_title = "Unknown Title"
+                        await send_log(f"[Track {download_index}/{len(download_queue)}] Warning: Invalid download item", "warning")
+
                     await send_log(f"[Track {download_index}/{len(download_queue)}] Downloading: {media_title}")
 
                     try:
@@ -660,6 +667,12 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
 
             except Exception as e:
                 await send_log(f"Error processing URL: {str(e)}", "error")
+                logger.exception(f"Full traceback for URL {url}:")
+                continue
+
+            # Safety check - ensure download_queue was successfully created
+            if not download_queue:
+                await send_log("No download queue available, skipping URL", "warning")
                 continue
 
         await send_log("All downloads completed!", "success")
