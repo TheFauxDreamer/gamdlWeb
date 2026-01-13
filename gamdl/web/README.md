@@ -60,6 +60,42 @@ gamdl-web --host 0.0.0.0 --port 3000
 5. Click "Start Download"
 6. Watch the real-time progress updates in the log window
 
+## Advanced Web UI
+
+The advanced web UI includes all features from the basic UI plus a **Library Browser** that lets you browse and download content directly from your Apple Music library.
+
+### Starting the Advanced UI
+
+```bash
+# Start with library browser (default: http://127.0.0.1:8080)
+gamdl-web --advanced
+
+# Or use the short form
+gamdl-web -adv
+
+# Custom host and port
+gamdl-web --advanced --host 0.0.0.0 --port 3000
+```
+
+### Additional Features
+
+- **Albums View**: Browse all albums in your library with cover art
+- **Playlists View**: View all your playlists
+- **Songs View**: Browse individual songs
+- **One-Click Downloads**: Download any library item directly from the UI
+- **Dual Interface**: Switch between library browser and URL downloads
+
+### Using the Library Browser
+
+1. Start the advanced UI and open your browser
+2. Initialize the API by starting any URL download first (required for library access)
+3. Switch to the "Library Browser" tab
+4. Choose between Albums, Playlists, or Songs
+5. Click "Download" on any item to start downloading
+6. Click "Load More" to view more items
+
+For detailed documentation, see [ADVANCED_UI.md](ADVANCED_UI.md).
+
 ### Configuration
 
 The web UI uses the same configuration as the CLI:

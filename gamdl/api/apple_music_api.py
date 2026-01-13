@@ -391,6 +391,129 @@ class AppleMusicApi:
 
         return playlist
 
+    async def get_all_library_albums(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        include: str = "",
+        extend: str = "extendedAssetUrls",
+    ) -> dict | None:
+        """Get all albums from user's library.
+
+        Args:
+            limit: Number of albums to return (default 100)
+            offset: Number of albums to skip (for pagination)
+            include: Comma-separated list of relationships to include
+            extend: Extension parameter (default extendedAssetUrls)
+
+        Returns:
+            Dict with format: {"data": [album_objects], "next": "..."}
+        """
+        if not self.active_subscription:
+            return None
+
+        response = await self.client.get(
+            f"{AMP_API_URL}/v1/me/library/albums",
+            params={
+                "limit": limit,
+                "offset": offset,
+                "include": include,
+                "extend": extend,
+            },
+        )
+        raise_for_status(response, {200, 404})
+
+        if response.status_code == 404:
+            return None
+
+        albums = safe_json(response)
+        if "data" not in albums:
+            raise Exception("Error getting library albums:", response.text)
+
+        return albums
+
+    async def get_all_library_playlists(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        include: str = "",
+        extend: str = "extendedAssetUrls",
+    ) -> dict | None:
+        """Get all playlists from user's library.
+
+        Args:
+            limit: Number of playlists to return (default 100)
+            offset: Number of playlists to skip (for pagination)
+            include: Comma-separated list of relationships to include
+            extend: Extension parameter (default extendedAssetUrls)
+
+        Returns:
+            Dict with format: {"data": [playlist_objects], "next": "..."}
+        """
+        if not self.active_subscription:
+            return None
+
+        response = await self.client.get(
+            f"{AMP_API_URL}/v1/me/library/playlists",
+            params={
+                "limit": limit,
+                "offset": offset,
+                "include": include,
+                "extend": extend,
+            },
+        )
+        raise_for_status(response, {200, 404})
+
+        if response.status_code == 404:
+            return None
+
+        playlists = safe_json(response)
+        if "data" not in playlists:
+            raise Exception("Error getting library playlists:", response.text)
+
+        return playlists
+
+    async def get_all_library_songs(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        include: str = "",
+        extend: str = "extendedAssetUrls",
+    ) -> dict | None:
+        """Get all songs from user's library.
+
+        Args:
+            limit: Number of songs to return (default 100)
+            offset: Number of songs to skip (for pagination)
+            include: Comma-separated list of relationships to include
+            extend: Extension parameter (default extendedAssetUrls)
+
+        Returns:
+            Dict with format: {"data": [song_objects], "next": "..."}
+        """
+        if not self.active_subscription:
+            return None
+
+        response = await self.client.get(
+            f"{AMP_API_URL}/v1/me/library/songs",
+            params={
+                "limit": limit,
+                "offset": offset,
+                "include": include,
+                "extend": extend,
+            },
+        )
+        raise_for_status(response, {200, 404})
+
+        if response.status_code == 404:
+            return None
+
+        songs = safe_json(response)
+        if "data" not in songs:
+            raise Exception("Error getting library songs:", response.text)
+
+        return songs
+
     async def get_search_results(
         self,
         term: str,

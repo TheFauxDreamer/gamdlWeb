@@ -2,8 +2,6 @@
 
 import click
 
-from gamdl.web.server import main as server_main
-
 
 @click.command()
 @click.option(
@@ -19,9 +17,22 @@ from gamdl.web.server import main as server_main
     show_default=True,
     type=int,
 )
-def main(host: str, port: int):
+@click.option(
+    "--advanced",
+    "-adv",
+    is_flag=True,
+    help="Launch advanced UI with library browser",
+)
+def main(host: str, port: int, advanced: bool):
     """Start the gamdl web UI server."""
-    server_main(host=host, port=port)
+    if advanced:
+        click.echo("Starting gamdl advanced web UI with library browser...")
+        from gamdl.web.server_advanced import main as server_advanced_main
+        server_advanced_main(host=host, port=port)
+    else:
+        click.echo("Starting gamdl basic web UI...")
+        from gamdl.web.server import main as server_main
+        server_main(host=host, port=port)
 
 
 if __name__ == "__main__":

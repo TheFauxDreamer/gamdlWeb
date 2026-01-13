@@ -30,3 +30,9 @@ Repository = "https://github.com/glomatico/gamdl"
 [project.scripts]
 gamdl = "gamdl.cli.cli:main"
 gamdl-web = "gamdl.web.cli:main"
+
+[tool.setuptools]
+packages = ["gamdl"]
+
+[tool.setuptools.package-data]
+gamdl = ["**/*.py"]
