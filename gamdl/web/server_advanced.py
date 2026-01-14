@@ -25,7 +25,12 @@ from gamdl.downloader.downloader_song import AppleMusicSongDownloader
 from gamdl.downloader.downloader_music_video import AppleMusicMusicVideoDownloader
 from gamdl.downloader.downloader_uploaded_video import AppleMusicUploadedVideoDownloader
 from gamdl.downloader.enums import DownloadMode, RemuxMode
-from gamdl.downloader.exceptions import GamdlError
+from gamdl.downloader.exceptions import (
+    GamdlError,
+    MediaFileExists,
+    NotStreamable,
+    FormatNotAvailable,
+)
 from gamdl.downloader.types import DownloadItem
 from gamdl.interface.enums import SongCodec, MusicVideoResolution, CoverFormat
 from gamdl.interface.interface import AppleMusicInterface
@@ -96,7 +101,8 @@ class DownloadRequest(BaseModel):
     no_lyrics: bool = False
     extra_tags: bool = False
 
-    # Retry settings
+    # Retry & delay settings
+    enable_retry_delay: bool = True  # Enable/disable retry and delay features
     max_retries: int = 3  # Number of retry attempts
     retry_delay: int = 60  # Seconds to wait between retries
 
@@ -360,7 +366,8 @@ async def process_queue():
 
                     # Success - apply queue item delay if configured
                     request = next_item.download_request
-                    queue_item_delay = getattr(request, 'queue_item_delay', 0.0)
+                    enable_retry_delay = getattr(request, 'enable_retry_delay', True)
+                    queue_item_delay = getattr(request, 'queue_item_delay', 0.0) if enable_retry_delay else 0.0
 
                     with queue_lock:
                         next_item.status = QueueItemStatus.COMPLETED
@@ -386,7 +393,7 @@ async def process_queue():
 
                     await websocket.send_json({
                         "type": "log",
-                        "data": "⚠️ Queue paused due to download failures. Please review errors and resume manually.",
+                        "message": "⚠️ Queue paused due to download failures. Please review errors and resume manually.",
                         "level": "error"
                     })
             else:
@@ -401,7 +408,8 @@ async def process_queue():
 
                     # Success - apply queue item delay if configured
                     request = next_item.download_request
-                    queue_item_delay = getattr(request, 'queue_item_delay', 0.0)
+                    enable_retry_delay = getattr(request, 'enable_retry_delay', True)
+                    queue_item_delay = getattr(request, 'queue_item_delay', 0.0) if enable_retry_delay else 0.0
 
                     with queue_lock:
                         next_item.status = QueueItemStatus.COMPLETED
@@ -1240,27 +1248,37 @@ async def root():
 
                 <h3>⏱️ Retry & Delay Options</h3>
                 <div class="form-group">
-                    <label for="maxRetries">Max Retries:</label>
-                    <input type="number" id="maxRetries" name="maxRetries" min="0" max="10" value="3">
-                    <small>Number of times to retry a failed download (0 = no retries)</small>
+                    <label>
+                        <input type="checkbox" id="enableRetryDelay" name="enableRetryDelay" checked>
+                        Enable retry & delay features
+                    </label>
+                    <small>When disabled, downloads will not retry on failure and will not pause between songs/items</small>
                 </div>
 
-                <div class="form-group">
-                    <label for="retryDelay">Retry Delay (seconds):</label>
-                    <input type="number" id="retryDelay" name="retryDelay" min="0" max="300" value="60">
-                    <small>Seconds to wait before retrying a failed download</small>
-                </div>
+                <div id="retryDelaySettings">
+                    <div class="form-group">
+                        <label for="maxRetries">Max Retries:</label>
+                        <input type="number" id="maxRetries" name="maxRetries" min="0" max="10" value="3">
+                        <small>Number of times to retry a failed download (0 = no retries)</small>
+                    </div>
 
-                <div class="form-group">
-                    <label for="songDelay">Song Delay (seconds):</label>
-                    <input type="number" id="songDelay" name="songDelay" min="0" max="60" step="0.5" value="0">
-                    <small>Seconds to wait after each individual song download</small>
-                </div>
+                    <div class="form-group">
+                        <label for="retryDelay">Retry Delay (seconds):</label>
+                        <input type="number" id="retryDelay" name="retryDelay" min="0" max="300" value="60">
+                        <small>Seconds to wait before retrying a failed download</small>
+                    </div>
 
-                <div class="form-group">
-                    <label for="queueItemDelay">Queue Item Delay (seconds):</label>
-                    <input type="number" id="queueItemDelay" name="queueItemDelay" min="0" max="300" step="1" value="0">
-                    <small>Seconds to wait after completing each album/playlist</small>
+                    <div class="form-group">
+                        <label for="songDelay">Song Delay (seconds):</label>
+                        <input type="number" id="songDelay" name="songDelay" min="0" max="60" step="0.5" value="0">
+                        <small>Seconds to wait after each individual song download</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="queueItemDelay">Queue Item Delay (seconds):</label>
+                        <input type="number" id="queueItemDelay" name="queueItemDelay" min="0" max="300" step="1" value="0">
+                        <small>Seconds to wait after completing each album/playlist</small>
+                    </div>
                 </div>
 
                 <div class="button-group">
@@ -1477,6 +1495,7 @@ async def root():
                     no_cover: document.getElementById('noCover').checked,
                     no_lyrics: document.getElementById('noLyrics').checked,
                     extra_tags: document.getElementById('extraTags').checked,
+                    enable_retry_delay: document.getElementById('enableRetryDelay').checked,
                     max_retries: parseInt(document.getElementById('maxRetries').value) || 3,
                     retry_delay: parseInt(document.getElementById('retryDelay').value) || 60,
                     song_delay: parseFloat(document.getElementById('songDelay').value) || 0,
@@ -1769,6 +1788,7 @@ async def root():
                             display_title: displayTitle,
                             cookies_path: document.getElementById('cookiesPath').value,
                             output_path: document.getElementById('outputPath').value,
+                            enable_retry_delay: document.getElementById('enableRetryDelay').checked,
                             max_retries: parseInt(document.getElementById('maxRetries').value) || 3,
                             retry_delay: parseInt(document.getElementById('retryDelay').value) || 60,
                             song_delay: parseFloat(document.getElementById('songDelay').value) || 0,
@@ -1822,6 +1842,7 @@ async def root():
                 const extraTags = localStorage.getItem('gamdl_extra_tags');
 
                 // Retry/delay options
+                const enableRetryDelay = localStorage.getItem('gamdl_enable_retry_delay');
                 const maxRetries = localStorage.getItem('gamdl_max_retries');
                 const retryDelay = localStorage.getItem('gamdl_retry_delay');
                 const songDelay = localStorage.getItem('gamdl_song_delay');
@@ -1837,6 +1858,7 @@ async def root():
                 if (noCover) document.getElementById('noCover').checked = noCover === 'true';
                 if (noLyrics) document.getElementById('noLyrics').checked = noLyrics === 'true';
                 if (extraTags) document.getElementById('extraTags').checked = extraTags === 'true';
+                if (enableRetryDelay !== null) document.getElementById('enableRetryDelay').checked = enableRetryDelay === 'true';
                 if (maxRetries) document.getElementById('maxRetries').value = maxRetries;
                 if (retryDelay) document.getElementById('retryDelay').value = retryDelay;
                 if (songDelay) document.getElementById('songDelay').value = songDelay;
@@ -1862,6 +1884,7 @@ async def root():
                 const extraTags = document.getElementById('extraTags').checked;
 
                 // Retry/delay options
+                const enableRetryDelay = document.getElementById('enableRetryDelay').checked;
                 const maxRetries = document.getElementById('maxRetries').value;
                 const retryDelay = document.getElementById('retryDelay').value;
                 const songDelay = document.getElementById('songDelay').value;
@@ -1877,6 +1900,7 @@ async def root():
                 localStorage.setItem('gamdl_no_cover', noCover);
                 localStorage.setItem('gamdl_no_lyrics', noLyrics);
                 localStorage.setItem('gamdl_extra_tags', extraTags);
+                localStorage.setItem('gamdl_enable_retry_delay', enableRetryDelay);
                 localStorage.setItem('gamdl_max_retries', maxRetries);
                 localStorage.setItem('gamdl_retry_delay', retryDelay);
                 localStorage.setItem('gamdl_song_delay', songDelay);
@@ -1886,6 +1910,17 @@ async def root():
             function saveAllSettings() {
                 savePreferences();
                 alert('Settings saved successfully!');
+            }
+
+            function toggleRetryDelaySettings() {
+                const checkbox = document.getElementById('enableRetryDelay');
+                const settingsContainer = document.getElementById('retryDelaySettings');
+
+                if (checkbox.checked) {
+                    settingsContainer.style.display = 'block';
+                } else {
+                    settingsContainer.style.display = 'none';
+                }
             }
 
             // ========================================
@@ -2118,6 +2153,10 @@ async def root():
             document.getElementById('noCover').addEventListener('change', savePreferences);
             document.getElementById('noLyrics').addEventListener('change', savePreferences);
             document.getElementById('extraTags').addEventListener('change', savePreferences);
+            document.getElementById('enableRetryDelay').addEventListener('change', function() {
+                savePreferences();
+                toggleRetryDelaySettings();
+            });
             document.getElementById('maxRetries').addEventListener('change', savePreferences);
             document.getElementById('retryDelay').addEventListener('change', savePreferences);
             document.getElementById('songDelay').addEventListener('change', savePreferences);
@@ -2126,6 +2165,7 @@ async def root():
             // Load albums and preferences on page load
             document.addEventListener('DOMContentLoaded', () => {
                 loadPreferences();
+                toggleRetryDelaySettings();  // Set initial visibility based on checkbox state
                 loadLibraryAlbums();
                 startQueueRefresh();
             });
@@ -2577,6 +2617,24 @@ async def download_with_retry(
             await downloader.download(download_item)
             return True  # Success
 
+        except MediaFileExists as e:
+            # File already exists - treat as success (skip)
+            await websocket.send_json({
+                "type": "log",
+                "message": f"Skipping: {str(e)}",
+                "level": "info"
+            })
+            return True  # Skip, don't retry
+
+        except (NotStreamable, FormatNotAvailable) as e:
+            # Permanent content issues - don't retry, log as warning and skip
+            await websocket.send_json({
+                "type": "log",
+                "message": f"Content unavailable: {str(e)}",
+                "level": "warning"
+            })
+            return True  # Skip, don't retry (retrying won't fix these issues)
+
         except Exception as e:
             attempts += 1
             error_msg = str(e)
@@ -2586,12 +2644,12 @@ async def download_with_retry(
                 retry_num = attempts
                 await websocket.send_json({
                     "type": "log",
-                    "data": f"Download failed (attempt {retry_num}/{max_retries + 1}): {error_msg}",
+                    "message": f"Download failed (attempt {retry_num}/{max_retries + 1}): {error_msg}",
                     "level": "warning"
                 })
                 await websocket.send_json({
                     "type": "log",
-                    "data": f"Retrying in {retry_delay} seconds...",
+                    "message": f"Retrying in {retry_delay} seconds...",
                     "level": "info"
                 })
 
@@ -2601,7 +2659,7 @@ async def download_with_retry(
                 # All retries exhausted
                 await websocket.send_json({
                     "type": "log",
-                    "data": f"Download failed after {max_retries + 1} attempts: {error_msg}",
+                    "message": f"Download failed after {max_retries + 1} attempts: {error_msg}",
                     "level": "error"
                 })
                 return False  # Failure
@@ -2628,10 +2686,11 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
         await send_log("Initializing Apple Music API...")
 
         # Extract retry/delay settings
-        max_retries = getattr(request, 'max_retries', 3)
-        retry_delay = getattr(request, 'retry_delay', 60)
-        song_delay = getattr(request, 'song_delay', 0.0)
-        queue_item_delay = getattr(request, 'queue_item_delay', 0.0)
+        enable_retry_delay = getattr(request, 'enable_retry_delay', True)
+        max_retries = getattr(request, 'max_retries', 3) if enable_retry_delay else 0
+        retry_delay = getattr(request, 'retry_delay', 60) if enable_retry_delay else 0
+        song_delay = getattr(request, 'song_delay', 0.0) if enable_retry_delay else 0.0
+        queue_item_delay = getattr(request, 'queue_item_delay', 0.0) if enable_retry_delay else 0.0
 
         # Track if any download failed after retries
         any_failed = False
