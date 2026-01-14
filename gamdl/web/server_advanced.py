@@ -72,6 +72,8 @@ class QueueItem:
     display_title: str = "Unknown"
     display_type: str = "url"  # "url", "album", "playlist", "song"
     url_count: int = 1
+    progress_current: int = 0  # Current track/item being processed
+    progress_total: int = 0  # Total tracks/items to process
 
 # Global queue state
 download_queue: list[QueueItem] = []
@@ -239,6 +241,8 @@ def get_queue_status() -> dict:
                     "started_at": item.started_at.isoformat() if item.started_at else None,
                     "completed_at": item.completed_at.isoformat() if item.completed_at else None,
                     "error_message": item.error_message,
+                    "progress_current": item.progress_current,
+                    "progress_total": item.progress_total,
                 }
                 for item in download_queue
             ],
@@ -393,7 +397,7 @@ async def process_queue():
 
                     await websocket.send_json({
                         "type": "log",
-                        "message": "⚠️ Queue paused due to download failures. Please review errors and resume manually.",
+                        "message": "Queue paused due to download failures. Please review errors and resume manually.",
                         "level": "error"
                     })
             else:
@@ -493,11 +497,26 @@ async def root():
             .form-group {
                 margin-bottom: 20px;
             }
-            label {
+            .form-group label {
                 display: block;
                 margin-bottom: 5px;
                 font-weight: 500;
                 color: #333;
+            }
+            .form-group.checkbox-group {
+                margin-bottom: 12px;
+            }
+            .form-group.checkbox-group label {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                cursor: pointer;
+                font-weight: 400;
+            }
+            .form-group.checkbox-group input[type="checkbox"] {
+                width: auto;
+                margin: 0;
+                cursor: pointer;
             }
             input, textarea, select {
                 width: 100%;
@@ -767,12 +786,15 @@ async def root():
                 margin-bottom: 5px;
             }
             #settingsView h3 {
-                margin-top: 25px;
+                margin-top: 30px;
                 margin-bottom: 15px;
                 color: #333;
-                font-size: 18px;
-                border-bottom: 2px solid #007aff;
-                padding-bottom: 5px;
+                font-size: 16px;
+                border-bottom: 2px solid #e0e0e0;
+                padding-bottom: 8px;
+            }
+            #settingsView h3:first-of-type {
+                margin-top: 0;
             }
             #settingsView small {
                 display: block;
@@ -797,15 +819,8 @@ async def root():
                 flex-direction: column;
                 border-left: 2px solid #e0e0e0;
             }
-            .queue-panel.collapsed {
-                transform: translateX(calc(100% - 40px));
-            }
             body {
                 margin-right: 350px;
-                transition: margin-right 0.3s ease;
-            }
-            body.queue-collapsed {
-                margin-right: 40px;
             }
             .queue-header {
                 display: flex;
@@ -821,23 +836,6 @@ async def root():
                 font-size: 18px;
                 font-weight: 600;
             }
-            .queue-toggle {
-                background: rgba(255, 255, 255, 0.2);
-                border: none;
-                color: white;
-                width: 30px;
-                height: 30px;
-                border-radius: 50%;
-                cursor: pointer;
-                font-size: 16px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                transition: background 0.2s;
-            }
-            .queue-toggle:hover {
-                background: rgba(255, 255, 255, 0.3);
-            }
             .queue-controls {
                 display: flex;
                 gap: 10px;
@@ -850,14 +848,29 @@ async def root():
                 padding: 8px 12px;
                 font-size: 13px;
                 background: white;
+                color: #333;
                 border: 1px solid #ddd;
                 border-radius: 4px;
                 cursor: pointer;
                 transition: all 0.2s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+            }
+            .queue-control-btn svg {
+                flex-shrink: 0;
             }
             .queue-control-btn:hover {
                 background: #f0f0f0;
                 border-color: #007aff;
+            }
+            .queue-control-btn.clear-btn {
+                color: #ff3b30;
+            }
+            .queue-control-btn.clear-btn:hover {
+                background: #fff5f5;
+                border-color: #ff3b30;
             }
             .queue-control-btn.paused {
                 background: #ff9500;
@@ -1020,6 +1033,12 @@ async def root():
             .queue-item-info {
                 font-size: 11px;
                 color: #007aff;
+                margin-bottom: 8px;
+            }
+            .queue-item-progress {
+                font-size: 12px;
+                color: #34c759;
+                font-weight: 500;
                 margin-bottom: 8px;
             }
             .queue-item-error {
@@ -1224,33 +1243,33 @@ async def root():
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group checkbox-group">
                     <label>
                         <input type="checkbox" id="noCover" name="noCover">
-                        Skip cover art download
+                        <span>Skip cover art download</span>
                     </label>
                 </div>
 
                 <h3>Metadata Options</h3>
-                <div class="form-group">
+                <div class="form-group checkbox-group">
                     <label>
                         <input type="checkbox" id="noLyrics" name="noLyrics">
-                        Skip lyrics download
+                        <span>Skip lyrics download</span>
                     </label>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group checkbox-group">
                     <label>
                         <input type="checkbox" id="extraTags" name="extraTags">
-                        Fetch extra tags from Apple Music preview
+                        <span>Fetch extra tags from Apple Music preview</span>
                     </label>
                 </div>
 
-                <h3>⏱️ Retry & Delay Options</h3>
-                <div class="form-group">
+                <h3>Retry & Delay Options</h3>
+                <div class="form-group checkbox-group">
                     <label>
                         <input type="checkbox" id="enableRetryDelay" name="enableRetryDelay" checked>
-                        Enable retry & delay features
+                        <span>Enable retry & delay features</span>
                     </label>
                     <small>When disabled, downloads will not retry on failure and will not pause between songs/items</small>
                 </div>
@@ -1290,17 +1309,22 @@ async def root():
             <div id="queuePanel" class="queue-panel">
                 <div class="queue-header">
                     <h3>Download Queue</h3>
-                    <button class="queue-toggle" onclick="toggleQueuePanel()">
-                        <span id="queueToggleIcon">◀</span>
-                    </button>
                 </div>
 
                 <div class="queue-controls">
                     <button id="pauseQueueBtn" onclick="pauseQueue()" class="queue-control-btn">
-                        <span id="pauseIcon">⏸</span> Pause
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="6" y="4" width="4" height="16"></rect>
+                            <rect x="14" y="4" width="4" height="16"></rect>
+                        </svg>
+                        Pause
                     </button>
-                    <button onclick="clearCompleted()" class="queue-control-btn">
-                        🗑 Clear Completed
+                    <button onclick="clearCompleted()" class="queue-control-btn clear-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        Clear Completed
                     </button>
                 </div>
 
@@ -1321,7 +1345,11 @@ async def root():
 
                 <div id="queueList" class="queue-list">
                     <div class="queue-empty">
-                        <div class="queue-empty-icon">📭</div>
+                        <div class="queue-empty-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.5">
+                                <path d="M3 7v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7m-18 0h18M3 7l3-4h12l3 4M10 11v6m4-6v6"></path>
+                            </svg>
+                        </div>
                         <div>No downloads in queue</div>
                     </div>
                 </div>
@@ -1927,24 +1955,7 @@ async def root():
             // Queue Management Functions
             // ========================================
 
-            let queuePanelCollapsed = false;
             let queueUpdateInterval = null;
-
-            function toggleQueuePanel() {
-                const panel = document.getElementById('queuePanel');
-                const toggleIcon = document.getElementById('queueToggleIcon');
-                queuePanelCollapsed = !queuePanelCollapsed;
-
-                if (queuePanelCollapsed) {
-                    panel.classList.add('collapsed');
-                    document.body.classList.add('queue-collapsed');
-                    toggleIcon.textContent = '▶';
-                } else {
-                    panel.classList.remove('collapsed');
-                    document.body.classList.remove('queue-collapsed');
-                    toggleIcon.textContent = '◀';
-                }
-            }
 
             async function pauseQueue() {
                 const btn = document.getElementById('pauseQueueBtn');
@@ -2031,19 +2042,27 @@ async def root():
 
                 // Update pause button state
                 const pauseBtn = document.getElementById('pauseQueueBtn');
+                const pauseSVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+                const playSVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+
                 if (queueData.paused) {
-                    pauseBtn.textContent = '▶ Resume';
+                    pauseBtn.innerHTML = playSVG + ' Resume';
                     pauseBtn.style.background = '#34c759';
+                    pauseBtn.style.color = 'white';
+                    pauseBtn.style.borderColor = '#34c759';
 
                     // Show warning if there are failed items
                     const hasFailed = queueData.items.some(item => item.status === 'failed');
                     if (hasFailed) {
-                        pauseBtn.textContent = '⚠️ Resume (Check Errors)';
-                        pauseBtn.style.background = '#ff9500';  // Orange warning color
+                        pauseBtn.innerHTML = playSVG + ' Resume (Check Errors)';
+                        pauseBtn.style.background = '#ff9500';
+                        pauseBtn.style.borderColor = '#ff9500';
                     }
                 } else {
-                    pauseBtn.textContent = '⏸ Pause';
+                    pauseBtn.innerHTML = pauseSVG + ' Pause';
                     pauseBtn.style.background = '#007aff';
+                    pauseBtn.style.color = 'white';
+                    pauseBtn.style.borderColor = '#007aff';
                 }
 
                 // Render queue list
@@ -2061,12 +2080,12 @@ async def root():
                 queueList.innerHTML = items.map(item => {
                     const statusClass = item.status.toLowerCase();
                     const statusIcon = {
-                        'queued': '⏳',
-                        'downloading': '⬇️',
-                        'completed': '✅',
-                        'failed': '❌',
-                        'cancelled': '⛔'
-                    }[item.status] || '•';
+                        'queued': '[Q]',
+                        'downloading': '[D]',
+                        'completed': '[C]',
+                        'failed': '[F]',
+                        'cancelled': '[X]'
+                    }[item.status] || '[ ]';
 
                     const statusText = item.status.charAt(0).toUpperCase() + item.status.slice(1);
 
@@ -2085,6 +2104,13 @@ async def root():
                     const urlInfo = item.url_count > 1 ?
                         `<div class="queue-item-info">${item.url_count} URLs</div>` : '';
 
+                    // Calculate and display progress percentage
+                    let progressInfo = '';
+                    if (item.progress_total > 0 && item.status === 'downloading') {
+                        const percentage = Math.round((item.progress_current / item.progress_total) * 100);
+                        progressInfo = `<div class="queue-item-progress">${item.progress_current}/${item.progress_total} (${percentage}%)</div>`;
+                    }
+
                     return `
                         <div class="queue-item ${statusClass}">
                             <div class="queue-item-header">
@@ -2095,6 +2121,7 @@ async def root():
                                 <span class="queue-item-type">${escapeHtml(item.display_type)}</span>
                                 <span class="queue-item-status">${statusText}</span>
                             </div>
+                            ${progressInfo}
                             ${urlInfo}
                             ${errorMessage}
                             <div class="queue-item-actions">
@@ -2840,6 +2867,13 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
 
                 await send_log(f"Found {len(download_queue)} track(s) to download", "success")
 
+                # Update queue item total progress
+                if current_downloading_item:
+                    with queue_lock:
+                        current_downloading_item.progress_total = len(download_queue)
+                        current_downloading_item.progress_current = 0
+                    await broadcast_queue_update()
+
                 # Download each item
                 for download_index, download_item in enumerate(download_queue, 1):
                     # Check for cancellation before each download
@@ -2855,6 +2889,12 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
                         await send_log(f"[Track {download_index}/{len(download_queue)}] Warning: Invalid download item", "warning")
 
                     await send_log(f"[Track {download_index}/{len(download_queue)}] Downloading: {media_title}")
+
+                    # Update queue item progress
+                    if current_downloading_item:
+                        with queue_lock:
+                            current_downloading_item.progress_current = download_index
+                        await broadcast_queue_update()
 
                     # Use retry wrapper instead of direct download
                     success = await download_with_retry(
@@ -2914,9 +2954,9 @@ def main(host: str = "127.0.0.1", port: int = 8080):
 
     url = f"http://{host}:{port}"
 
-    print(f"\n🎵 gamdl Web UI starting...")
-    print(f"📡 Server: {url}")
-    print(f"⚡ Press Ctrl+C to stop\n")
+    print(f"\ngamdl Web UI starting...")
+    print(f"Server: {url}")
+    print(f"Press Ctrl+C to stop\n")
 
     # Open browser after a short delay to ensure server is ready
     def open_browser():
@@ -2927,7 +2967,17 @@ def main(host: str = "127.0.0.1", port: int = 8080):
     browser_thread = threading.Thread(target=open_browser, daemon=True)
     browser_thread.start()
 
-    uvicorn.run(app, host=host, port=port)
+    # Filter out noisy queue status requests from access logs
+    class QueueStatusFilter(logging.Filter):
+        def filter(self, record):
+            # Don't log /api/queue/status requests
+            return "/api/queue/status" not in record.getMessage()
+
+    # Add filter to uvicorn access logger before starting server
+    access_logger = logging.getLogger("uvicorn.access")
+    access_logger.addFilter(QueueStatusFilter())
+
+    uvicorn.run(app, host=host, port=port, log_level="info")
 
 
 if __name__ == "__main__":

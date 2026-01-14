@@ -884,9 +884,9 @@ def main(host: str = "127.0.0.1", port: int = 8080):
 
     url = f"http://{host}:{port}"
 
-    print(f"\n🎵 gamdl Web UI starting...")
-    print(f"📡 Server: {url}")
-    print(f"⚡ Press Ctrl+C to stop\n")
+    print(f"\ngamdl Web UI starting...")
+    print(f"Server: {url}")
+    print(f"Press Ctrl+C to stop\n")
 
     # Open browser after a short delay to ensure server is ready
     def open_browser():
