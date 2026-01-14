@@ -1,4 +1,4 @@
-# Gamdl (Glomatico's Apple Music Downloader) Fork
+# Fork of Gamdl by Glomatico
 
 A CLI & Web-based GUI app for downloading Apple Music songs, & music videos.
 
