@@ -2077,8 +2077,16 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
     try:
         await send_log("Initializing Apple Music API...")
 
-        # Initialize API
-        cookies_path = request.cookies_path or os.path.expanduser("~/.gamdl/cookies.txt")
+        # Initialize API - handle empty strings and expand ~ paths
+        cookies_path = request.cookies_path
+        if not cookies_path or cookies_path.strip() == "":
+            cookies_path = os.path.expanduser("~/.gamdl/cookies.txt")
+        else:
+            cookies_path = cookies_path.strip()
+            # Expand ~ in user-provided paths
+            if cookies_path.startswith("~"):
+                cookies_path = os.path.expanduser(cookies_path)
+
         if not Path(cookies_path).exists():
             await send_log(f"Cookies file not found at {cookies_path}", "error")
             await send_log("Please provide a valid cookies.txt file", "error")
@@ -2106,9 +2114,22 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
         music_video_interface = AppleMusicMusicVideoInterface(interface)
         uploaded_video_interface = AppleMusicUploadedVideoInterface(interface)
 
-        # Initialize downloaders
-        output_path = request.output_path or "./downloads"
-        temp_path = request.temp_path or "./temp"
+        # Initialize downloaders - handle empty strings and expand ~ paths
+        output_path = request.output_path
+        if not output_path or output_path.strip() == "":
+            output_path = "./downloads"
+        else:
+            output_path = output_path.strip()
+            if output_path.startswith("~"):
+                output_path = os.path.expanduser(output_path)
+
+        temp_path = request.temp_path
+        if not temp_path or temp_path.strip() == "":
+            temp_path = "./temp"
+        else:
+            temp_path = temp_path.strip()
+            if temp_path.startswith("~"):
+                temp_path = os.path.expanduser(temp_path)
 
         # Parse enum values
         cover_format = CoverFormat.JPG
