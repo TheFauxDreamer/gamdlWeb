@@ -376,6 +376,24 @@ async def root():
                 padding: 40px;
                 color: #666;
             }
+            #settingsView h2 {
+                margin-top: 0;
+                margin-bottom: 5px;
+            }
+            #settingsView h3 {
+                margin-top: 25px;
+                margin-bottom: 15px;
+                color: #333;
+                font-size: 18px;
+                border-bottom: 2px solid #007aff;
+                padding-bottom: 5px;
+            }
+            #settingsView small {
+                display: block;
+                margin-top: 5px;
+                color: #666;
+                font-size: 12px;
+            }
         </style>
     </head>
     <body>
@@ -387,6 +405,7 @@ async def root():
             <div class="nav-tabs">
                 <button class="nav-tab active" onclick="switchView('library', this)">Library Browser</button>
                 <button class="nav-tab" onclick="switchView('downloads', this)">URL Downloads</button>
+                <button class="nav-tab" onclick="switchView('settings', this)">Settings</button>
             </div>
 
             <!-- Library Browser View -->
@@ -439,90 +458,6 @@ async def root():
                     <textarea id="urls" name="urls" placeholder="https://music.apple.com/us/album/...&#10;https://music.apple.com/us/playlist/..." required></textarea>
                 </div>
 
-                <div class="form-group">
-                    <label for="cookiesPath">Cookies Path (Netscape format)</label>
-                    <input type="text" id="cookiesPath" name="cookiesPath" placeholder="/path/to/cookies.txt">
-                </div>
-
-                <div class="form-group">
-                    <label for="outputPath">Output Path</label>
-                    <input type="text" id="outputPath" name="outputPath" placeholder="./downloads">
-                </div>
-
-                <div class="collapsible">
-                    <div class="collapsible-header" onclick="toggleCollapsible(this)">
-                        <strong>⚙️ Advanced Options (click to expand)</strong>
-                    </div>
-                    <div class="collapsible-content">
-                        <div class="row">
-                            <div class="form-group">
-                                <label for="songCodec">Song Codec</label>
-                                <select id="songCodec" name="songCodec">
-                                    <option value="">Default (AAC)</option>
-                                    <option value="aac-legacy">AAC Legacy</option>
-                                    <option value="aac-he-legacy">AAC HE Legacy</option>
-                                    <option value="aac">AAC</option>
-                                    <option value="aac-he">AAC HE</option>
-                                    <option value="aac-binaural">AAC Binaural</option>
-                                    <option value="aac-downmix">AAC Downmix</option>
-                                    <option value="alac">ALAC</option>
-                                    <option value="atmos">Atmos</option>
-                                    <option value="ac3">AC3</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="coverSize">Cover Size (px)</label>
-                                <input type="number" id="coverSize" name="coverSize" placeholder="1200">
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="form-group">
-                                <label for="musicVideoResolution">Music Video Resolution</label>
-                                <select id="musicVideoResolution" name="musicVideoResolution">
-                                    <option value="">Best Available</option>
-                                    <option value="2160p">2160p (4K)</option>
-                                    <option value="1080p">1080p</option>
-                                    <option value="720p">720p</option>
-                                    <option value="480p">480p</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="coverFormat">Cover Format</label>
-                                <select id="coverFormat" name="coverFormat">
-                                    <option value="">Default (JPG)</option>
-                                    <option value="jpg">JPG</option>
-                                    <option value="png">PNG</option>
-                                    <option value="raw">Raw</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox" id="noCover" name="noCover">
-                                Skip cover art download
-                            </label>
-                        </div>
-
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox" id="noLyrics" name="noLyrics">
-                                Skip lyrics download
-                            </label>
-                        </div>
-
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox" id="extraTags" name="extraTags">
-                                Fetch extra tags from Apple Music preview
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="button-group">
                     <button type="submit" id="downloadBtn">Start Download</button>
                     <button type="button" id="cancelBtn" class="cancel" disabled>Cancel</button>
@@ -559,6 +494,99 @@ async def root():
                 <div id="progressLog" class="progress-log"></div>
             </div>
             </div> <!-- End of downloadsView -->
+
+            <!-- Settings View -->
+            <div id="settingsView" class="view-section">
+                <h2>Settings</h2>
+                <p class="subtitle">Configure paths and download options</p>
+
+                <h3>Paths</h3>
+                <div class="form-group">
+                    <label for="cookiesPath">Cookies Path (Netscape format)</label>
+                    <input type="text" id="cookiesPath" name="cookiesPath" placeholder="/path/to/cookies.txt">
+                    <small>Path to your exported Apple Music cookies file</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="outputPath">Output Path</label>
+                    <input type="text" id="outputPath" name="outputPath" placeholder="./downloads">
+                    <small>Directory where downloaded files will be saved</small>
+                </div>
+
+                <h3>Audio Options</h3>
+                <div class="row">
+                    <div class="form-group">
+                        <label for="songCodec">Song Codec</label>
+                        <select id="songCodec" name="songCodec">
+                            <option value="">Default (AAC)</option>
+                            <option value="aac-legacy">AAC Legacy</option>
+                            <option value="aac-he-legacy">AAC HE Legacy</option>
+                            <option value="aac">AAC</option>
+                            <option value="aac-he">AAC HE</option>
+                            <option value="aac-binaural">AAC Binaural</option>
+                            <option value="aac-downmix">AAC Downmix</option>
+                            <option value="alac">ALAC</option>
+                            <option value="atmos">Atmos</option>
+                            <option value="ac3">AC3</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="musicVideoResolution">Music Video Resolution</label>
+                        <select id="musicVideoResolution" name="musicVideoResolution">
+                            <option value="">Best Available</option>
+                            <option value="2160p">2160p (4K)</option>
+                            <option value="1080p">1080p</option>
+                            <option value="720p">720p</option>
+                            <option value="480p">480p</option>
+                        </select>
+                    </div>
+                </div>
+
+                <h3>Cover Art Options</h3>
+                <div class="row">
+                    <div class="form-group">
+                        <label for="coverSize">Cover Size (px)</label>
+                        <input type="number" id="coverSize" name="coverSize" placeholder="1200">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="coverFormat">Cover Format</label>
+                        <select id="coverFormat" name="coverFormat">
+                            <option value="">Default (JPG)</option>
+                            <option value="jpg">JPG</option>
+                            <option value="png">PNG</option>
+                            <option value="raw">Raw</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="noCover" name="noCover">
+                        Skip cover art download
+                    </label>
+                </div>
+
+                <h3>Metadata Options</h3>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="noLyrics" name="noLyrics">
+                        Skip lyrics download
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="extraTags" name="extraTags">
+                        Fetch extra tags from Apple Music preview
+                    </label>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" onclick="saveAllSettings()">Save Settings</button>
+                </div>
+            </div>
         </div>
 
         <script>
@@ -785,6 +813,7 @@ async def root():
                 // Show/hide views
                 document.getElementById('libraryView').classList.toggle('active', view === 'library');
                 document.getElementById('downloadsView').classList.toggle('active', view === 'downloads');
+                document.getElementById('settingsView').classList.toggle('active', view === 'settings');
 
                 // Load library data on first view if needed
                 if (view === 'library' && !document.getElementById('albumsGrid').hasChildNodes()) {
@@ -1042,8 +1071,86 @@ async def root():
                 loadLibrarySongs(songsOffset);
             }
 
-            // Load albums on page load
+            // Load and save user preferences
+            function loadPreferences() {
+                // Paths
+                const cookiesPath = localStorage.getItem('gamdl_cookies_path');
+                const outputPath = localStorage.getItem('gamdl_output_path');
+
+                // Audio options
+                const songCodec = localStorage.getItem('gamdl_song_codec');
+                const musicVideoResolution = localStorage.getItem('gamdl_music_video_resolution');
+
+                // Cover art options
+                const coverSize = localStorage.getItem('gamdl_cover_size');
+                const coverFormat = localStorage.getItem('gamdl_cover_format');
+                const noCover = localStorage.getItem('gamdl_no_cover');
+
+                // Metadata options
+                const noLyrics = localStorage.getItem('gamdl_no_lyrics');
+                const extraTags = localStorage.getItem('gamdl_extra_tags');
+
+                // Apply saved values
+                if (cookiesPath) document.getElementById('cookiesPath').value = cookiesPath;
+                if (outputPath) document.getElementById('outputPath').value = outputPath;
+                if (songCodec) document.getElementById('songCodec').value = songCodec;
+                if (musicVideoResolution) document.getElementById('musicVideoResolution').value = musicVideoResolution;
+                if (coverSize) document.getElementById('coverSize').value = coverSize;
+                if (coverFormat) document.getElementById('coverFormat').value = coverFormat;
+                if (noCover) document.getElementById('noCover').checked = noCover === 'true';
+                if (noLyrics) document.getElementById('noLyrics').checked = noLyrics === 'true';
+                if (extraTags) document.getElementById('extraTags').checked = extraTags === 'true';
+            }
+
+            function savePreferences() {
+                // Paths
+                const cookiesPath = document.getElementById('cookiesPath').value;
+                const outputPath = document.getElementById('outputPath').value;
+
+                // Audio options
+                const songCodec = document.getElementById('songCodec').value;
+                const musicVideoResolution = document.getElementById('musicVideoResolution').value;
+
+                // Cover art options
+                const coverSize = document.getElementById('coverSize').value;
+                const coverFormat = document.getElementById('coverFormat').value;
+                const noCover = document.getElementById('noCover').checked;
+
+                // Metadata options
+                const noLyrics = document.getElementById('noLyrics').checked;
+                const extraTags = document.getElementById('extraTags').checked;
+
+                // Save to localStorage
+                localStorage.setItem('gamdl_cookies_path', cookiesPath);
+                localStorage.setItem('gamdl_output_path', outputPath);
+                localStorage.setItem('gamdl_song_codec', songCodec);
+                localStorage.setItem('gamdl_music_video_resolution', musicVideoResolution);
+                localStorage.setItem('gamdl_cover_size', coverSize);
+                localStorage.setItem('gamdl_cover_format', coverFormat);
+                localStorage.setItem('gamdl_no_cover', noCover);
+                localStorage.setItem('gamdl_no_lyrics', noLyrics);
+                localStorage.setItem('gamdl_extra_tags', extraTags);
+            }
+
+            function saveAllSettings() {
+                savePreferences();
+                alert('Settings saved successfully!');
+            }
+
+            // Add event listeners to save preferences when fields change
+            document.getElementById('cookiesPath').addEventListener('change', savePreferences);
+            document.getElementById('outputPath').addEventListener('change', savePreferences);
+            document.getElementById('songCodec').addEventListener('change', savePreferences);
+            document.getElementById('musicVideoResolution').addEventListener('change', savePreferences);
+            document.getElementById('coverSize').addEventListener('change', savePreferences);
+            document.getElementById('coverFormat').addEventListener('change', savePreferences);
+            document.getElementById('noCover').addEventListener('change', savePreferences);
+            document.getElementById('noLyrics').addEventListener('change', savePreferences);
+            document.getElementById('extraTags').addEventListener('change', savePreferences);
+
+            // Load albums and preferences on page load
             document.addEventListener('DOMContentLoaded', () => {
+                loadPreferences();
                 loadLibraryAlbums();
             });
         </script>
