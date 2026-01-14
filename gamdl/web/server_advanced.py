@@ -1204,6 +1204,45 @@ async def root():
                 background: #007aff;
                 color: white;
             }
+
+            /* Search Container */
+            .search-container {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 20px;
+                max-width: 600px;
+            }
+
+            .search-container input {
+                flex: 1;
+                padding: 12px 16px;
+                font-size: 16px;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                outline: none;
+                transition: border-color 0.2s;
+            }
+
+            .search-container input:focus {
+                border-color: #007aff;
+            }
+
+            .search-container button {
+                padding: 12px 24px;
+                font-size: 16px;
+                font-weight: 500;
+                white-space: nowrap;
+            }
+
+            /* Error Message */
+            .error-message {
+                padding: 12px 16px;
+                background: #fff3cd;
+                border: 1px solid #ffc107;
+                border-radius: 8px;
+                color: #856404;
+                margin-bottom: 20px;
+            }
         </style>
     </head>
     <body>
@@ -1216,6 +1255,7 @@ async def root():
                 <button class="nav-tab active" onclick="switchView('library', this)">Library Browser</button>
                 <button class="nav-tab" onclick="switchView('downloads', this)">URL Downloads</button>
                 <button class="nav-tab" onclick="switchView('settings', this)">Settings</button>
+                <button class="nav-tab" onclick="switchView('search', this)">Search</button>
             </div>
 
             <!-- Library Browser View -->
@@ -1430,6 +1470,95 @@ async def root():
 
                 <div class="button-group">
                     <button type="button" onclick="saveAllSettings()">Save Settings</button>
+                </div>
+            </div>
+
+            <!-- Search View -->
+            <div id="searchView" class="view-section">
+                <h2>Search Apple Music</h2>
+
+                <!-- Search Input -->
+                <div class="search-container">
+                    <input type="text" id="searchInput" placeholder="Search for artists, albums, or songs..."
+                           onkeypress="if(event.key === 'Enter') performSearch()">
+                    <button onclick="performSearch()" class="btn-primary">Search</button>
+                </div>
+
+                <!-- Search Result Tabs -->
+                <div class="nav-tabs" style="margin-top: 20px;">
+                    <button class="nav-tab active" onclick="switchSearchTab('all', this)">All</button>
+                    <button class="nav-tab" onclick="switchSearchTab('songs', this)">Songs</button>
+                    <button class="nav-tab" onclick="switchSearchTab('albums', this)">Albums</button>
+                    <button class="nav-tab" onclick="switchSearchTab('artists', this)">Artists</button>
+                    <button class="nav-tab" onclick="switchSearchTab('playlists', this)">Playlists</button>
+                </div>
+
+                <!-- Error Display -->
+                <div id="searchError" class="error-message" style="display:none;"></div>
+
+                <!-- Search Results Container -->
+                <div id="searchResults">
+                    <!-- All Results Tab -->
+                    <div id="allTab" class="tab-content active">
+                        <div id="allLoading" class="loading">Searching...</div>
+                        <div id="allEmpty" class="library-empty" style="display:none;">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <p>No results found</p>
+                            <small>Try different search terms</small>
+                        </div>
+                        <div id="allGrid" class="library-grid"></div>
+                    </div>
+
+                    <!-- Songs Tab -->
+                    <div id="songsSearchTab" class="tab-content">
+                        <div id="songsSearchLoading" class="loading">Loading songs...</div>
+                        <div id="songsSearchEmpty" class="library-empty" style="display:none;">
+                            <p>No songs found</p>
+                        </div>
+                        <div id="songsSearchGrid" class="library-grid"></div>
+                        <div id="songsSearchLoadMore" class="load-more" style="display:none;">
+                            <button onclick="loadMoreSearchResults('songs')">Load More</button>
+                        </div>
+                    </div>
+
+                    <!-- Albums Tab -->
+                    <div id="albumsSearchTab" class="tab-content">
+                        <div id="albumsSearchLoading" class="loading">Loading albums...</div>
+                        <div id="albumsSearchEmpty" class="library-empty" style="display:none;">
+                            <p>No albums found</p>
+                        </div>
+                        <div id="albumsSearchGrid" class="library-grid"></div>
+                        <div id="albumsSearchLoadMore" class="load-more" style="display:none;">
+                            <button onclick="loadMoreSearchResults('albums')">Load More</button>
+                        </div>
+                    </div>
+
+                    <!-- Artists Tab -->
+                    <div id="artistsSearchTab" class="tab-content">
+                        <div id="artistsSearchLoading" class="loading">Loading artists...</div>
+                        <div id="artistsSearchEmpty" class="library-empty" style="display:none;">
+                            <p>No artists found</p>
+                        </div>
+                        <div id="artistsSearchGrid" class="library-grid"></div>
+                        <div id="artistsSearchLoadMore" class="load-more" style="display:none;">
+                            <button onclick="loadMoreSearchResults('artists')">Load More</button>
+                        </div>
+                    </div>
+
+                    <!-- Playlists Tab -->
+                    <div id="playlistsSearchTab" class="tab-content">
+                        <div id="playlistsSearchLoading" class="loading">Loading playlists...</div>
+                        <div id="playlistsSearchEmpty" class="library-empty" style="display:none;">
+                            <p>No playlists found</p>
+                        </div>
+                        <div id="playlistsSearchGrid" class="library-grid"></div>
+                        <div id="playlistsSearchLoadMore" class="load-more" style="display:none;">
+                            <button onclick="loadMoreSearchResults('playlists')">Load More</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1715,10 +1844,18 @@ async def root():
                 document.getElementById('libraryView').classList.toggle('active', view === 'library');
                 document.getElementById('downloadsView').classList.toggle('active', view === 'downloads');
                 document.getElementById('settingsView').classList.toggle('active', view === 'settings');
+                document.getElementById('searchView').classList.toggle('active', view === 'search');
 
                 // Load library data on first view if needed
                 if (view === 'library' && !document.getElementById('albumsGrid').hasChildNodes()) {
                     loadLibraryAlbums();
+                }
+
+                // Focus search input when switching to search tab
+                if (view === 'search') {
+                    setTimeout(() => {
+                        document.getElementById('searchInput').focus();
+                    }, 100);
                 }
             }
 
@@ -2013,6 +2150,306 @@ async def root():
 
             function loadMoreSongs() {
                 loadLibrarySongs(songsOffset);
+            }
+
+            // Search functionality
+            let currentSearchQuery = '';
+            let currentSearchTab = 'all';
+            let searchOffsets = {
+                songs: 0,
+                albums: 0,
+                artists: 0,
+                playlists: 0
+            };
+
+            async function performSearch() {
+                const query = document.getElementById('searchInput').value.trim();
+
+                if (!query) {
+                    return;
+                }
+
+                currentSearchQuery = query;
+                searchOffsets = { songs: 0, albums: 0, artists: 0, playlists: 0 };
+
+                document.getElementById('allLoading').style.display = 'block';
+                document.getElementById('allGrid').innerHTML = '';
+                document.getElementById('allEmpty').style.display = 'none';
+                document.getElementById('searchError').style.display = 'none';
+
+                try {
+                    const response = await fetch(`/api/search?term=${encodeURIComponent(query)}&limit=25`);
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.detail || 'Search failed');
+                    }
+
+                    const data = await response.json();
+                    displayAllResults(data);
+
+                } catch (error) {
+                    document.getElementById('allLoading').style.display = 'none';
+                    document.getElementById('searchError').textContent = error.message;
+                    document.getElementById('searchError').style.display = 'block';
+                }
+            }
+
+            function displayAllResults(data) {
+                const loading = document.getElementById('allLoading');
+                const grid = document.getElementById('allGrid');
+                const empty = document.getElementById('allEmpty');
+
+                loading.style.display = 'none';
+                grid.innerHTML = '';
+
+                let hasResults = false;
+
+                if (data.albums && data.albums.length > 0) {
+                    hasResults = true;
+                    const section = createResultSection('Albums', data.albums, 'album');
+                    grid.appendChild(section);
+                }
+
+                if (data.songs && data.songs.length > 0) {
+                    hasResults = true;
+                    const section = createResultSection('Songs', data.songs, 'song');
+                    grid.appendChild(section);
+                }
+
+                if (data.artists && data.artists.length > 0) {
+                    hasResults = true;
+                    const section = createResultSection('Artists', data.artists, 'artist');
+                    grid.appendChild(section);
+                }
+
+                if (data.playlists && data.playlists.length > 0) {
+                    hasResults = true;
+                    const section = createResultSection('Playlists', data.playlists, 'playlist');
+                    grid.appendChild(section);
+                }
+
+                if (!hasResults) {
+                    empty.style.display = 'block';
+                }
+            }
+
+            function createResultSection(title, items, type) {
+                const section = document.createElement('div');
+                section.className = 'result-section';
+                section.style.marginBottom = '30px';
+
+                const heading = document.createElement('h3');
+                heading.textContent = title;
+                heading.style.marginBottom = '15px';
+                heading.style.fontSize = '20px';
+                heading.style.fontWeight = '600';
+                section.appendChild(heading);
+
+                const grid = document.createElement('div');
+                grid.className = 'library-grid';
+
+                const displayItems = items.slice(0, 6);
+                displayItems.forEach(item => {
+                    const itemElement = createSearchResultItem(item, type);
+                    grid.appendChild(itemElement);
+                });
+
+                section.appendChild(grid);
+
+                if (items.length > 6) {
+                    const viewAll = document.createElement('button');
+                    viewAll.textContent = `View All ${items.length} ${title}`;
+                    viewAll.className = 'btn-secondary';
+                    viewAll.style.marginTop = '10px';
+                    viewAll.onclick = () => {
+                        switchSearchTab(type === 'song' ? 'songs' : type + 's', null);
+                    };
+                    section.appendChild(viewAll);
+                }
+
+                return section;
+            }
+
+            function createSearchResultItem(item, type) {
+                const div = document.createElement('div');
+                div.className = 'library-item';
+
+                const img = document.createElement('img');
+                img.src = item.artwork || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><rect fill="%23ddd" width="180" height="180"/></svg>';
+                img.alt = item.name;
+                div.appendChild(img);
+
+                const title = document.createElement('div');
+                title.className = 'library-item-title';
+                title.textContent = item.name;
+                div.appendChild(title);
+
+                const subtitle = document.createElement('div');
+                subtitle.className = 'library-item-subtitle';
+                if (type === 'song') {
+                    subtitle.textContent = `${item.artist}${item.album ? ' • ' + item.album : ''}`;
+                } else if (type === 'album' || type === 'playlist') {
+                    subtitle.textContent = item.artist || item.curator || '';
+                } else if (type === 'artist') {
+                    subtitle.textContent = 'Artist';
+                }
+                div.appendChild(subtitle);
+
+                if (type !== 'artist') {
+                    const btnContainer = document.createElement('div');
+                    btnContainer.style.marginTop = '10px';
+
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.textContent = 'Download';
+                    downloadBtn.className = 'btn-primary';
+                    downloadBtn.style.width = '100%';
+                    downloadBtn.onclick = () => downloadSearchResult(item, type);
+                    btnContainer.appendChild(downloadBtn);
+
+                    div.appendChild(btnContainer);
+                }
+
+                return div;
+            }
+
+            async function downloadSearchResult(item, type) {
+                try {
+                    const url = item.url;
+
+                    if (!url) {
+                        alert('Cannot download this item - no URL available');
+                        return;
+                    }
+
+                    const response = await fetch('/api/download', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            urls: [url],
+                            cookies_path: document.getElementById('cookiesPath').value,
+                            output_path: document.getElementById('outputPath').value,
+                            song_codec: document.getElementById('songCodec').value,
+                            music_video_resolution: document.getElementById('musicVideoResolution').value,
+                            cover_size: document.getElementById('coverSize').value,
+                            cover_format: document.getElementById('coverFormat').value,
+                            no_cover: document.getElementById('noCover').checked,
+                            no_lyrics: document.getElementById('noLyrics').checked,
+                            extra_tags: document.getElementById('extraTags').checked,
+                            enable_retry_delay: document.getElementById('enableRetryDelay').checked,
+                            max_retries: parseInt(document.getElementById('maxRetries').value) || 3,
+                            retry_delay: parseInt(document.getElementById('retryDelay').value) || 60,
+                            song_delay: parseFloat(document.getElementById('songDelay').value) || 0,
+                            queue_item_delay: parseFloat(document.getElementById('queueItemDelay').value) || 0,
+                        })
+                    });
+
+                    if (response.ok) {
+                        alert(`Added "${item.name}" to download queue`);
+                    } else {
+                        const error = await response.json();
+                        alert(`Download failed: ${error.detail || 'Unknown error'}`);
+                    }
+
+                } catch (error) {
+                    alert(`Error: ${error.message}`);
+                }
+            }
+
+            function switchSearchTab(tab, clickedElement) {
+                const tabs = document.querySelectorAll('#searchView .nav-tabs > .nav-tab');
+                tabs.forEach(t => t.classList.remove('active'));
+                if (clickedElement) {
+                    clickedElement.classList.add('active');
+                } else {
+                    tabs.forEach(t => {
+                        const tabText = t.textContent.toLowerCase();
+                        if ((tab === 'songs' && tabText === 'songs') ||
+                            (tab === 'albums' && tabText === 'albums') ||
+                            (tab === 'artists' && tabText === 'artists') ||
+                            (tab === 'playlists' && tabText === 'playlists') ||
+                            (tab === 'all' && tabText === 'all')) {
+                            t.classList.add('active');
+                        }
+                    });
+                }
+
+                document.getElementById('allTab').classList.toggle('active', tab === 'all');
+                document.getElementById('songsSearchTab').classList.toggle('active', tab === 'songs');
+                document.getElementById('albumsSearchTab').classList.toggle('active', tab === 'albums');
+                document.getElementById('artistsSearchTab').classList.toggle('active', tab === 'artists');
+                document.getElementById('playlistsSearchTab').classList.toggle('active', tab === 'playlists');
+
+                currentSearchTab = tab;
+
+                if (tab !== 'all' && currentSearchQuery) {
+                    loadSearchTabResults(tab);
+                }
+            }
+
+            async function loadSearchTabResults(type, loadMore = false) {
+                const offset = loadMore ? searchOffsets[type] : 0;
+
+                if (!loadMore) {
+                    searchOffsets[type] = 0;
+                }
+
+                const loading = document.getElementById(`${type}SearchLoading`);
+                const grid = document.getElementById(`${type}SearchGrid`);
+                const empty = document.getElementById(`${type}SearchEmpty`);
+                const loadMoreBtn = document.getElementById(`${type}SearchLoadMore`);
+                const errorDiv = document.getElementById('searchError');
+
+                if (!loadMore) {
+                    loading.style.display = 'block';
+                    grid.innerHTML = '';
+                    empty.style.display = 'none';
+                    loadMoreBtn.style.display = 'none';
+                    errorDiv.style.display = 'none';
+                }
+
+                try {
+                    const response = await fetch(
+                        `/api/search?term=${encodeURIComponent(currentSearchQuery)}&types=${type}&limit=50&offset=${offset}`
+                    );
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.detail || 'Search failed');
+                    }
+
+                    const data = await response.json();
+                    loading.style.display = 'none';
+
+                    const results = data[type] || [];
+
+                    if (results.length === 0 && offset === 0) {
+                        empty.style.display = 'block';
+                        return;
+                    }
+
+                    const singularType = type.slice(0, -1);
+                    results.forEach(item => {
+                        const itemElement = createSearchResultItem(item, singularType);
+                        grid.appendChild(itemElement);
+                    });
+
+                    if (data.has_more) {
+                        searchOffsets[type] = data.next_offset;
+                        loadMoreBtn.style.display = 'block';
+                    } else {
+                        loadMoreBtn.style.display = 'none';
+                    }
+
+                } catch (error) {
+                    loading.style.display = 'none';
+                    errorDiv.textContent = error.message;
+                    errorDiv.style.display = 'block';
+                }
+            }
+
+            function loadMoreSearchResults(type) {
+                loadSearchTabResults(type, true);
             }
 
             // Load and save user preferences
@@ -2443,6 +2880,114 @@ async def save_cookies_path_config(request_data: dict):
     save_webui_config(config)
 
     return {"success": True, "message": "Cookies path saved to configuration"}
+
+
+@app.get("/api/search")
+async def search_apple_music(
+    term: str,
+    types: str = "songs,albums,artists,playlists",
+    limit: int = 25,
+    offset: int = 0,
+):
+    """Search Apple Music catalog."""
+    if not hasattr(app.state, "api") or app.state.api is None:
+        raise HTTPException(
+            status_code=401,
+            detail="API not initialized. Please set your cookies path in Settings, then restart the server."
+        )
+
+    api = app.state.api
+
+    try:
+        # Perform search using Apple Music API
+        search_results = await api.get_search_results(
+            term=term,
+            types=types,
+            limit=limit,
+            offset=offset,
+        )
+
+        # Format results for frontend
+        formatted_results = {}
+        results = search_results.get("results", {})
+
+        # Format albums
+        if "albums" in results:
+            albums_data = results["albums"].get("data", [])
+            formatted_results["albums"] = [
+                {
+                    "id": album["id"],
+                    "name": album["attributes"]["name"],
+                    "artist": album["attributes"]["artistName"],
+                    "artwork": album["attributes"]["artwork"]["url"].replace("{w}", "300").replace("{h}", "300") if "artwork" in album["attributes"] else None,
+                    "trackCount": album["attributes"].get("trackCount", 0),
+                    "url": album["attributes"]["url"],
+                }
+                for album in albums_data
+            ]
+            formatted_results["has_more"] = len(albums_data) >= limit
+            formatted_results["next_offset"] = offset + len(albums_data)
+
+        # Format songs
+        if "songs" in results:
+            songs_data = results["songs"].get("data", [])
+            formatted_results["songs"] = [
+                {
+                    "id": song["id"],
+                    "name": song["attributes"]["name"],
+                    "artist": song["attributes"]["artistName"],
+                    "album": song["attributes"].get("albumName", ""),
+                    "artwork": song["attributes"]["artwork"]["url"].replace("{w}", "300").replace("{h}", "300") if "artwork" in song["attributes"] else None,
+                    "url": song["attributes"]["url"],
+                }
+                for song in songs_data
+            ]
+            if "has_more" not in formatted_results:
+                formatted_results["has_more"] = len(songs_data) >= limit
+                formatted_results["next_offset"] = offset + len(songs_data)
+
+        # Format artists
+        if "artists" in results:
+            artists_data = results["artists"].get("data", [])
+            formatted_results["artists"] = [
+                {
+                    "id": artist["id"],
+                    "name": artist["attributes"]["name"],
+                    "artwork": artist["attributes"].get("artwork", {}).get("url", "").replace("{w}", "300").replace("{h}", "300") if "artwork" in artist["attributes"] else None,
+                    "url": artist["attributes"]["url"],
+                }
+                for artist in artists_data
+            ]
+            if "has_more" not in formatted_results:
+                formatted_results["has_more"] = len(artists_data) >= limit
+                formatted_results["next_offset"] = offset + len(artists_data)
+
+        # Format playlists
+        if "playlists" in results:
+            playlists_data = results["playlists"].get("data", [])
+            formatted_results["playlists"] = [
+                {
+                    "id": playlist["id"],
+                    "name": playlist["attributes"]["name"],
+                    "curator": playlist["attributes"].get("curatorName", "Apple Music"),
+                    "artwork": playlist["attributes"]["artwork"]["url"].replace("{w}", "300").replace("{h}", "300") if "artwork" in playlist["attributes"] else None,
+                    "trackCount": playlist["attributes"].get("trackCount", 0),
+                    "url": playlist["attributes"]["url"],
+                }
+                for playlist in playlists_data
+            ]
+            if "has_more" not in formatted_results:
+                formatted_results["has_more"] = len(playlists_data) >= limit
+                formatted_results["next_offset"] = offset + len(playlists_data)
+
+        return formatted_results
+
+    except Exception as e:
+        logger.error(f"Search failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Search failed: {str(e)}"
+        )
 
 
 @app.post("/api/download", response_model=SessionResponse)
