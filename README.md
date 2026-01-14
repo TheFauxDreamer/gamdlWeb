@@ -7,15 +7,34 @@
 
 A command-line app for downloading Apple Music songs, music videos and post videos.
 
-**Join our Discord Server:** <https://discord.gg/aBjMEZ9tnq>
+-------------------------------------------------------------------------------------------------------------------------------
+**Disclaimer:** I know very little about Python, this is all thanks to Claude.
+
+# Unique Features in my Fork
+
+- WebUI Basic (offers simple CLI features)
+- WebUI Advanced (offers an improved GUI experience for your Apple Music Library like one-click downloads!)
+- Queue downloads & management
+- Retry failed download
+- Pause after failures
+- Delay between downloads
+
+## WIP Features
+These will come in time, I don't have a timeline.
+
+- Search feature (no need to open a seperate apple music tab)
+- One-click, download entire artist discography (albums, songs, EPs)
+- Set a monitored playlist and download new additions automatically
+- Fix the "null songs" count in WebUI playlists
+- Apple Podcast Support
+
 
 -------------------------------------------------------------------------------------------------------------------------------
 
-# Unique Features to my Fork
 
 ## 🌐 Web UI
 
-Gamdl now includes a modern web interface with real-time progress tracking!
+Gamdl now includes a modern web interface with "real-time" progress tracking!
 
 **Quick Start:**
 
@@ -29,18 +48,11 @@ gamdl-web
 # Start the advanced web server (additional WIP features)
 gamdl-web --advanced
 
-# Open browser to http://127.0.0.1:8080
 ```
-
-**Features:**
-- **Real-time Progress** - See live updates for pagination, metadata processing, and downloads
-- **Modern Interface** - Clean, responsive design that works in any browser
-- **Large Playlist Support** - Progress tracking for playlists with thousands of songs
-- **Full Configuration** - Access to all major gamdl features
-
-Perfect for visualizing progress on large playlists (13,000+ songs) where you need to know it's still working!
-
 See [WEB_UI_QUICKSTART.md](WEB_UI_QUICKSTART.md) for detailed instructions.
+
+
+
 
 -------------------------------------------------------------------------------------------------------------------------------
 
