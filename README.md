@@ -12,6 +12,9 @@ A command-line app for downloading Apple Music songs, music videos and post vide
 
 # Unique Features in my Fork
 
+## Current Features
+These work to a degree I haven't encountered major issues or bugs that break the experience.
+
 - WebUI Basic (offers simple CLI features)
 - WebUI Advanced (offers an improved GUI experience for your Apple Music Library like one-click downloads!)
 - Queue downloads & management
@@ -19,15 +22,20 @@ A command-line app for downloading Apple Music songs, music videos and post vide
 - Pause after failures
 - Delay between downloads
 
+
 ## WIP Features
-These will come in time, I don't have a timeline.
+These are in "active" development and in varying states of useability.
 
 - Search feature (no need to open a seperate apple music tab)
 - One-click, download entire artist discography (albums, songs, EPs)
+
+
+## Future Features
+These will come in time, I don't have a timeline tho.
+
 - Set a monitored playlist and download new additions automatically
 - Fix the "null songs" count in WebUI playlists
 - Apple Podcast Support
-
 
 -------------------------------------------------------------------------------------------------------------------------------
 
