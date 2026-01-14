@@ -750,6 +750,33 @@ async def root():
                 font-size: 13px;
                 margin: 0;
             }
+            .library-item .btn-group {
+                display: flex;
+                gap: 4px;
+                width: 100%;
+            }
+            .library-item .btn-group button {
+                flex: 1;
+                padding: 8px 4px;
+                font-size: 12px;
+            }
+            .library-item .btn-primary {
+                background: #007aff;
+                color: white;
+                border: 1px solid #007aff;
+            }
+            .library-item .btn-primary:hover {
+                background: #0056b3;
+                border-color: #0056b3;
+            }
+            .library-item .btn-secondary {
+                background: white;
+                color: #007aff;
+                border: 1px solid #007aff;
+            }
+            .library-item .btn-secondary:hover {
+                background: #f0f0f0;
+            }
             .load-more {
                 text-align: center;
                 margin: 20px 0;
@@ -1787,24 +1814,60 @@ async def root():
                     subtitle.textContent = `${item.trackCount} songs`;
                 }
 
-                const btn = document.createElement('button');
-                btn.textContent = 'Download';
-                btn.onclick = () => downloadLibraryItem(item.id, type, item.name, item.artist);
+                // Create download button with dropdown for albums/playlists
+                if (type === 'album' || type === 'playlist') {
+                    const btnGroup = document.createElement('div');
+                    btnGroup.className = 'btn-group';
 
-                div.appendChild(img);
-                div.appendChild(title);
-                div.appendChild(subtitle);
-                div.appendChild(btn);
+                    const mainBtn = document.createElement('button');
+                    mainBtn.textContent = 'Library Tracks';
+                    mainBtn.className = 'btn-primary';
+                    mainBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        downloadLibraryItem(item.id, type, item.name, item.artist, false);
+                    };
+
+                    const fullBtn = document.createElement('button');
+                    fullBtn.textContent = `Full ${type === 'album' ? 'Album' : 'Playlist'}`;
+                    fullBtn.className = 'btn-secondary';
+                    fullBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        downloadLibraryItem(item.id, type, item.name, item.artist, true);
+                    };
+
+                    btnGroup.appendChild(mainBtn);
+                    btnGroup.appendChild(fullBtn);
+
+                    div.appendChild(img);
+                    div.appendChild(title);
+                    div.appendChild(subtitle);
+                    div.appendChild(btnGroup);
+                } else {
+                    // For songs, just a single download button
+                    const btn = document.createElement('button');
+                    btn.textContent = 'Download';
+                    btn.onclick = () => downloadLibraryItem(item.id, type, item.name, item.artist, false);
+
+                    div.appendChild(img);
+                    div.appendChild(title);
+                    div.appendChild(subtitle);
+                    div.appendChild(btn);
+                }
 
                 return div;
             }
 
-            async function downloadLibraryItem(libraryId, mediaType, itemName, itemArtist) {
+            async function downloadLibraryItem(libraryId, mediaType, itemName, itemArtist, downloadFull = false) {
                 try {
                     // Format display title
                     let displayTitle = itemName;
                     if (itemArtist && mediaType !== 'playlist') {
                         displayTitle = `${itemName} - ${itemArtist}`;
+                    }
+
+                    // Add indicator to display title if downloading full album/playlist
+                    if (downloadFull) {
+                        displayTitle = `${displayTitle} (Full)`;
                     }
 
                     const response = await fetch('/api/library/download', {
@@ -1814,6 +1877,7 @@ async def root():
                             library_id: libraryId,
                             media_type: mediaType,
                             display_title: displayTitle,
+                            download_full: downloadFull,
                             cookies_path: document.getElementById('cookiesPath').value,
                             output_path: document.getElementById('outputPath').value,
                             enable_retry_delay: document.getElementById('enableRetryDelay').checked,
@@ -2473,6 +2537,9 @@ async def download_from_library(request_data: dict):
     """Add library download to queue."""
     library_id = request_data.get("library_id")
     media_type = request_data.get("media_type")  # "album", "playlist", or "song"
+    download_full = request_data.get("download_full", False)  # Download full album/playlist vs library tracks only
+
+    logger.info(f"Library download request: id={library_id}, type={media_type}, download_full={download_full}")
 
     if not library_id or not media_type:
         raise HTTPException(status_code=400, detail="Missing library_id or media_type")
@@ -2485,10 +2552,102 @@ async def download_from_library(request_data: dict):
 
     api = app.state.api
 
-    # Construct Apple Music URL from library ID
-    # Library URLs format: https://music.apple.com/{storefront}/library/{type}/{id}
+    # Construct Apple Music URL
     storefront = api.storefront
-    url = f"https://music.apple.com/{storefront}/library/{media_type}s/{library_id}"
+
+    if download_full:
+        # For full download, we need the catalog ID
+        # First, get the library item to extract the catalog reference
+        try:
+            if media_type == "album":
+                library_response = await api.get_library_album(library_id)
+            elif media_type == "playlist":
+                library_response = await api.get_library_playlist(library_id)
+            else:
+                # Songs don't have a "full" version, just download the library track
+                download_full = False
+
+            if download_full and library_response:
+                # Try to extract catalog ID from relationships
+                logger.info(f"Library response for full download: {library_response}")
+
+                # The response structure is: {"data": [item]}
+                data = library_response.get("data", [])
+                if data:
+                    item_data = data[0]
+                    relationships = item_data.get("relationships", {})
+                    logger.info(f"Relationships: {relationships}")
+
+                    catalog_data = relationships.get("catalog", {}).get("data")
+                    catalog_id = None
+
+                    # Method 1: Check for direct catalog relationship
+                    if catalog_data and len(catalog_data) > 0:
+                        catalog_id = catalog_data[0].get("id")
+                        logger.info(f"Method 1: Found catalog ID from direct relationship: {catalog_id}")
+
+                    # Method 2: Extract catalog ID from track's playParams
+                    if not catalog_id:
+                        logger.info("Method 1 failed, trying Method 2: extracting from track playParams")
+                        tracks_relationship = relationships.get("tracks", {})
+                        tracks_data = tracks_relationship.get("data", [])
+
+                        if tracks_data and len(tracks_data) > 0:
+                            # Get the first track's catalog ID
+                            first_track = tracks_data[0]
+                            track_attributes = first_track.get("attributes", {})
+                            play_params = track_attributes.get("playParams", {})
+                            catalog_song_id = play_params.get("catalogId")
+
+                            logger.info(f"Found catalog song ID from track playParams: {catalog_song_id}")
+
+                            if catalog_song_id:
+                                try:
+                                    # Fetch the catalog song to get its album relationship
+                                    logger.info(f"Fetching catalog song {catalog_song_id} to extract album ID")
+                                    catalog_song_response = await api.get_song(catalog_song_id, extend="", include="albums")
+
+                                    song_data = catalog_song_response.get("data", [])
+                                    if song_data and len(song_data) > 0:
+                                        song_relationships = song_data[0].get("relationships", {})
+                                        albums_data = song_relationships.get("albums", {}).get("data", [])
+
+                                        if albums_data and len(albums_data) > 0:
+                                            catalog_id = albums_data[0].get("id")
+                                            logger.info(f"Method 2: Extracted catalog album ID: {catalog_id}")
+                                        else:
+                                            logger.warning("No albums found in catalog song relationships")
+                                    else:
+                                        logger.warning("No data in catalog song response")
+                                except Exception as e:
+                                    logger.warning(f"Failed to fetch catalog song: {e}")
+                            else:
+                                logger.warning("No catalogId found in track playParams")
+                        else:
+                            logger.warning("No tracks found in relationships")
+
+                    # Use the catalog ID if we found one
+                    if catalog_id:
+                        # Use catalog URL for full download
+                        url = f"https://music.apple.com/{storefront}/{media_type}/{catalog_id}"
+                        logger.info(f"Using catalog URL for full download: {url}")
+                    else:
+                        # Fallback to library URL if no catalog reference found
+                        logger.warning("Could not find catalog ID via any method, using library URL")
+                        url = f"https://music.apple.com/{storefront}/library/{media_type}s/{library_id}"
+                else:
+                    logger.warning("No data in library response, using library URL")
+                    url = f"https://music.apple.com/{storefront}/library/{media_type}s/{library_id}"
+            else:
+                # Fallback to library URL
+                logger.info("No library response or download_full is False, using library URL")
+                url = f"https://music.apple.com/{storefront}/library/{media_type}s/{library_id}"
+        except Exception as e:
+            logger.warning(f"Could not fetch catalog reference, using library URL: {e}", exc_info=True)
+            url = f"https://music.apple.com/{storefront}/library/{media_type}s/{library_id}"
+    else:
+        # Library URLs format: https://music.apple.com/{storefront}/library/{type}/{id}
+        url = f"https://music.apple.com/{storefront}/library/{media_type}s/{library_id}"
 
     # Create a download request
     download_request = DownloadRequest(
