@@ -5,7 +5,10 @@ import json
 import logging
 import os
 import uuid
-from dataclasses import asdict
+import threading
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -42,6 +45,37 @@ active_sessions: Dict[str, dict] = {}
 # Store cancellation flags for sessions
 cancellation_flags: Dict[str, bool] = {}
 
+# Queue data structures
+class QueueItemStatus(Enum):
+    QUEUED = "queued"
+    DOWNLOADING = "downloading"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+@dataclass
+class QueueItem:
+    """Represents a single item in the download queue"""
+    id: str  # UUID for this queue item
+    session_id: Optional[str]  # Session UUID (will be created when item starts downloading)
+    download_request: "DownloadRequest"
+    status: QueueItemStatus
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+    display_title: str = "Unknown"
+    display_type: str = "url"  # "url", "album", "playlist", "song"
+    url_count: int = 1
+
+# Global queue state
+download_queue: list[QueueItem] = []
+queue_lock = threading.Lock()
+queue_paused: bool = False
+queue_processor_running: bool = False
+current_downloading_item: Optional[QueueItem] = None
+websocket_clients: list[WebSocket] = []  # For broadcasting queue updates
+
 
 class DownloadRequest(BaseModel):
     urls: list[str]
@@ -67,6 +101,249 @@ class SessionResponse(BaseModel):
     session_id: str
     status: str
     message: str
+
+
+# Queue Management Functions
+
+def add_to_queue(download_request: DownloadRequest, display_info: Optional[dict] = None) -> str:
+    """Add a download request to the queue. Returns queue item ID."""
+    global queue_processor_running
+
+    with queue_lock:
+        item_id = str(uuid.uuid4())
+
+        # Extract display information
+        display_title = "Unknown"
+        display_type = "url"
+        url_count = len(download_request.urls)
+
+        if display_info:
+            display_title = display_info.get("title", "Unknown")
+            display_type = display_info.get("type", "url")
+
+        queue_item = QueueItem(
+            id=item_id,
+            session_id=None,  # Will be set when downloading starts
+            download_request=download_request,
+            status=QueueItemStatus.QUEUED,
+            created_at=datetime.now(),
+            display_title=display_title,
+            display_type=display_type,
+            url_count=url_count
+        )
+
+        download_queue.append(queue_item)
+        logger.info(f"Added item {item_id} to queue: {display_title}")
+
+        # Start queue processor if not running
+        if not queue_processor_running:
+            asyncio.create_task(process_queue())
+
+        return item_id
+
+
+def remove_from_queue(item_id: str) -> bool:
+    """Remove an item from the queue. Returns True if successful."""
+    with queue_lock:
+        for i, item in enumerate(download_queue):
+            if item.id == item_id:
+                # If item is currently downloading, cancel it
+                if item.status == QueueItemStatus.DOWNLOADING:
+                    if item.session_id:
+                        cancellation_flags[item.session_id] = True
+                    item.status = QueueItemStatus.CANCELLED
+                else:
+                    # Remove from queue
+                    download_queue.pop(i)
+                    logger.info(f"Removed item {item_id} from queue")
+                return True
+        return False
+
+
+def get_queue_status() -> dict:
+    """Get current queue status."""
+    with queue_lock:
+        return {
+            "items": [
+                {
+                    "id": item.id,
+                    "status": item.status.value,
+                    "display_title": item.display_title,
+                    "display_type": item.display_type,
+                    "url_count": item.url_count,
+                    "created_at": item.created_at.isoformat(),
+                    "started_at": item.started_at.isoformat() if item.started_at else None,
+                    "completed_at": item.completed_at.isoformat() if item.completed_at else None,
+                    "error_message": item.error_message,
+                }
+                for item in download_queue
+            ],
+            "paused": queue_paused,
+            "current_item_id": current_downloading_item.id if current_downloading_item else None,
+        }
+
+
+def pause_queue():
+    """Pause the queue processor."""
+    global queue_paused
+    with queue_lock:
+        queue_paused = True
+        logger.info("Queue paused")
+
+
+def resume_queue():
+    """Resume the queue processor."""
+    global queue_paused, queue_processor_running
+    with queue_lock:
+        queue_paused = False
+        logger.info("Queue resumed")
+
+        # Restart processor if it stopped
+        if not queue_processor_running:
+            asyncio.create_task(process_queue())
+
+
+async def wait_for_websocket(session_id: str, timeout: float) -> Optional[WebSocket]:
+    """Wait for a WebSocket to connect to this session."""
+    start_time = asyncio.get_event_loop().time()
+    while asyncio.get_event_loop().time() - start_time < timeout:
+        if session_id in active_sessions and active_sessions[session_id].get("websocket"):
+            return active_sessions[session_id]["websocket"]
+        await asyncio.sleep(0.1)
+    return None
+
+
+async def broadcast_queue_update():
+    """Broadcast queue status to all connected WebSocket clients."""
+    queue_status = get_queue_status()
+    message = {
+        "type": "queue_update",
+        "data": queue_status
+    }
+
+    # Send to all connected clients
+    dead_clients = []
+    for ws in websocket_clients:
+        try:
+            await ws.send_json(message)
+        except:
+            dead_clients.append(ws)
+
+    # Remove dead clients
+    for ws in dead_clients:
+        websocket_clients.remove(ws)
+
+
+async def process_queue():
+    """Background task that processes the queue sequentially."""
+    global queue_processor_running, current_downloading_item
+
+    queue_processor_running = True
+    logger.info("Queue processor started")
+
+    try:
+        while True:
+            # Wait if paused
+            if queue_paused:
+                await asyncio.sleep(1)
+                continue
+
+            # Get next queued item
+            next_item = None
+            with queue_lock:
+                for item in download_queue:
+                    if item.status == QueueItemStatus.QUEUED:
+                        next_item = item
+                        break
+
+            if not next_item:
+                # No more items to process
+                await asyncio.sleep(2)
+
+                # Check if queue is truly empty
+                with queue_lock:
+                    has_queued = any(item.status == QueueItemStatus.QUEUED for item in download_queue)
+                    if not has_queued:
+                        queue_processor_running = False
+                        logger.info("Queue processor stopping (no items)")
+                        break
+                continue
+
+            # Process the item
+            with queue_lock:
+                next_item.status = QueueItemStatus.DOWNLOADING
+                next_item.started_at = datetime.now()
+                next_item.session_id = str(uuid.uuid4())
+                current_downloading_item = next_item
+
+            logger.info(f"Processing queue item: {next_item.display_title}")
+
+            # Broadcast queue update to all connected WebSocket clients
+            await broadcast_queue_update()
+
+            # Create session and start download
+            session_id = next_item.session_id
+            active_sessions[session_id] = {
+                "status": "running",
+                "request": next_item.download_request,
+                "logs": [],
+                "websocket": None,  # Will be set if client connects
+                "queue_item_id": next_item.id,
+            }
+            cancellation_flags[session_id] = False
+
+            # Wait for WebSocket connection (with timeout)
+            websocket = await wait_for_websocket(session_id, timeout=5.0)
+
+            if websocket:
+                # Run download with WebSocket updates
+                try:
+                    await run_download_session(session_id, active_sessions[session_id], websocket)
+
+                    with queue_lock:
+                        next_item.status = QueueItemStatus.COMPLETED
+                        next_item.completed_at = datetime.now()
+                except Exception as e:
+                    logger.error(f"Error processing queue item: {e}", exc_info=True)
+                    with queue_lock:
+                        next_item.status = QueueItemStatus.FAILED
+                        next_item.error_message = str(e)
+                        next_item.completed_at = datetime.now()
+            else:
+                # No WebSocket connection, run without it
+                logger.warning(f"No WebSocket connection for session {session_id}, running in background")
+                try:
+                    # Create a dummy WebSocket-like object that does nothing
+                    class DummyWebSocket:
+                        async def send_json(self, data): pass
+
+                    await run_download_session(session_id, active_sessions[session_id], DummyWebSocket())
+
+                    with queue_lock:
+                        next_item.status = QueueItemStatus.COMPLETED
+                        next_item.completed_at = datetime.now()
+                except Exception as e:
+                    logger.error(f"Error processing queue item: {e}", exc_info=True)
+                    with queue_lock:
+                        next_item.status = QueueItemStatus.FAILED
+                        next_item.error_message = str(e)
+                        next_item.completed_at = datetime.now()
+
+            # Cleanup
+            with queue_lock:
+                current_downloading_item = None
+
+            if session_id in active_sessions:
+                del active_sessions[session_id]
+            if session_id in cancellation_flags:
+                del cancellation_flags[session_id]
+
+            # Broadcast queue update
+            await broadcast_queue_update()
+
+    finally:
+        queue_processor_running = False
+        logger.info("Queue processor stopped")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -394,6 +671,232 @@ async def root():
                 color: #666;
                 font-size: 12px;
             }
+
+            /* Queue Panel Styles */
+            .queue-panel {
+                position: fixed;
+                right: 0;
+                top: 0;
+                bottom: 0;
+                width: 350px;
+                background: white;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+                transform: translateX(0);
+                transition: transform 0.3s ease;
+                z-index: 1000;
+                display: flex;
+                flex-direction: column;
+                border-left: 2px solid #e0e0e0;
+            }
+            .queue-panel.collapsed {
+                transform: translateX(calc(100% - 40px));
+            }
+            body {
+                margin-right: 350px;
+                transition: margin-right 0.3s ease;
+            }
+            body.queue-collapsed {
+                margin-right: 40px;
+            }
+            .queue-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 15px;
+                background: #007aff;
+                color: white;
+                border-bottom: 1px solid #0051d5;
+            }
+            .queue-header h3 {
+                margin: 0;
+                font-size: 18px;
+                font-weight: 600;
+            }
+            .queue-toggle {
+                background: rgba(255, 255, 255, 0.2);
+                border: none;
+                color: white;
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                cursor: pointer;
+                font-size: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.2s;
+            }
+            .queue-toggle:hover {
+                background: rgba(255, 255, 255, 0.3);
+            }
+            .queue-controls {
+                display: flex;
+                gap: 10px;
+                padding: 10px;
+                background: #f9f9f9;
+                border-bottom: 1px solid #e0e0e0;
+            }
+            .queue-control-btn {
+                flex: 1;
+                padding: 8px 12px;
+                font-size: 13px;
+                background: white;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .queue-control-btn:hover {
+                background: #f0f0f0;
+                border-color: #007aff;
+            }
+            .queue-control-btn.paused {
+                background: #ff9500;
+                color: white;
+                border-color: #ff9500;
+            }
+            .queue-status {
+                display: flex;
+                justify-content: space-around;
+                padding: 10px;
+                background: #f9f9f9;
+                border-bottom: 1px solid #e0e0e0;
+            }
+            .queue-stat {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                font-size: 12px;
+            }
+            .queue-stat-label {
+                color: #666;
+                margin-bottom: 4px;
+            }
+            .queue-stat-value {
+                font-size: 20px;
+                font-weight: bold;
+                color: #007aff;
+            }
+            .queue-list {
+                flex: 1;
+                overflow-y: auto;
+                padding: 10px;
+            }
+            .queue-item {
+                background: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 12px;
+                margin-bottom: 10px;
+                transition: all 0.2s;
+            }
+            .queue-item:hover {
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+            .queue-item.queued {
+                border-left: 4px solid #007aff;
+            }
+            .queue-item.downloading {
+                border-left: 4px solid #34c759;
+                background: #f0fff4;
+            }
+            .queue-item.completed {
+                border-left: 4px solid #8e8e93;
+                opacity: 0.7;
+            }
+            .queue-item.failed {
+                border-left: 4px solid #ff3b30;
+                background: #fff5f5;
+            }
+            .queue-item.cancelled {
+                border-left: 4px solid #ff9500;
+                opacity: 0.6;
+            }
+            .queue-item-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 8px;
+            }
+            .queue-item-title {
+                font-weight: 600;
+                font-size: 14px;
+                color: #333;
+                margin-bottom: 4px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                flex: 1;
+            }
+            .queue-item-type {
+                font-size: 11px;
+                color: #666;
+                text-transform: uppercase;
+                background: #f0f0f0;
+                padding: 2px 6px;
+                border-radius: 3px;
+                margin-left: 8px;
+            }
+            .queue-item-status {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 12px;
+                color: #666;
+                margin-bottom: 8px;
+            }
+            .queue-item-status-icon {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                display: inline-block;
+            }
+            .queue-item-status-icon.queued {
+                background: #007aff;
+            }
+            .queue-item-status-icon.downloading {
+                background: #34c759;
+                animation: pulse 2s infinite;
+            }
+            .queue-item-status-icon.completed {
+                background: #8e8e93;
+            }
+            .queue-item-status-icon.failed {
+                background: #ff3b30;
+            }
+            .queue-item-actions {
+                display: flex;
+                gap: 8px;
+            }
+            .queue-item-btn {
+                padding: 4px 8px;
+                font-size: 12px;
+                border: 1px solid #ddd;
+                background: white;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .queue-item-btn:hover {
+                background: #f0f0f0;
+            }
+            .queue-item-btn.remove {
+                color: #ff3b30;
+                border-color: #ff3b30;
+            }
+            .queue-item-btn.remove:hover {
+                background: #ff3b30;
+                color: white;
+            }
+            .queue-empty {
+                text-align: center;
+                padding: 40px 20px;
+                color: #999;
+            }
+            .queue-empty-icon {
+                font-size: 48px;
+                margin-bottom: 10px;
+            }
         </style>
     </head>
     <body>
@@ -585,6 +1088,47 @@ async def root():
 
                 <div class="button-group">
                     <button type="button" onclick="saveAllSettings()">Save Settings</button>
+                </div>
+            </div>
+
+            <!-- Queue Side Panel -->
+            <div id="queuePanel" class="queue-panel">
+                <div class="queue-header">
+                    <h3>Download Queue</h3>
+                    <button class="queue-toggle" onclick="toggleQueuePanel()">
+                        <span id="queueToggleIcon">◀</span>
+                    </button>
+                </div>
+
+                <div class="queue-controls">
+                    <button id="pauseQueueBtn" onclick="pauseQueue()" class="queue-control-btn">
+                        <span id="pauseIcon">⏸</span> Pause
+                    </button>
+                    <button onclick="clearCompleted()" class="queue-control-btn">
+                        🗑 Clear Completed
+                    </button>
+                </div>
+
+                <div class="queue-status">
+                    <div class="queue-stat">
+                        <span class="queue-stat-label">Queued:</span>
+                        <span id="queuedCount" class="queue-stat-value">0</span>
+                    </div>
+                    <div class="queue-stat">
+                        <span class="queue-stat-label">Downloading:</span>
+                        <span id="downloadingCount" class="queue-stat-value">0</span>
+                    </div>
+                    <div class="queue-stat">
+                        <span class="queue-stat-label">Completed:</span>
+                        <span id="completedCount" class="queue-stat-value">0</span>
+                    </div>
+                </div>
+
+                <div id="queueList" class="queue-list">
+                    <div class="queue-empty">
+                        <div class="queue-empty-icon">📭</div>
+                        <div>No downloads in queue</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1159,25 +1703,63 @@ async def root():
     """
 
 
+# Queue API Endpoints
+
+@app.get("/api/queue/status")
+async def get_queue():
+    """Get current queue status."""
+    return get_queue_status()
+
+
+@app.post("/api/queue/pause")
+async def pause_queue_endpoint():
+    """Pause the download queue."""
+    pause_queue()
+    await broadcast_queue_update()
+    return {"status": "paused", "message": "Queue paused"}
+
+
+@app.post("/api/queue/resume")
+async def resume_queue_endpoint():
+    """Resume the download queue."""
+    resume_queue()
+    await broadcast_queue_update()
+    return {"status": "resumed", "message": "Queue resumed"}
+
+
+@app.delete("/api/queue/remove/{item_id}")
+async def remove_queue_item(item_id: str):
+    """Remove an item from the queue."""
+    success = remove_from_queue(item_id)
+    if success:
+        await broadcast_queue_update()
+        return {"status": "removed", "message": "Item removed from queue"}
+    else:
+        raise HTTPException(status_code=404, detail="Queue item not found")
+
+
+@app.post("/api/queue/clear")
+async def clear_queue_endpoint():
+    """Clear all completed/failed items from queue."""
+    with queue_lock:
+        global download_queue
+        download_queue = [
+            item for item in download_queue
+            if item.status in [QueueItemStatus.QUEUED, QueueItemStatus.DOWNLOADING]
+        ]
+    await broadcast_queue_update()
+    return {"status": "cleared", "message": "Completed items cleared"}
+
+
 @app.post("/api/download", response_model=SessionResponse)
 async def start_download(request: DownloadRequest):
-    """Start a new download session."""
-    session_id = str(uuid.uuid4())
-
-    active_sessions[session_id] = {
-        "status": "initializing",
-        "request": request,
-        "logs": [],
-        "websocket": None,
-    }
-    cancellation_flags[session_id] = False
-
-    logger.info(f"Created download session {session_id}")
+    """Add download to queue instead of starting immediately."""
+    item_id = add_to_queue(request)
 
     return SessionResponse(
-        session_id=session_id,
-        status="created",
-        message="Download session created. Connect to WebSocket for progress.",
+        session_id=item_id,  # Return item_id as session_id for compatibility
+        status="queued",
+        message="Download added to queue",
     )
 
 
@@ -1377,7 +1959,7 @@ async def get_library_songs(
 
 @app.post("/api/library/download")
 async def download_from_library(request_data: dict):
-    """Start download from library item."""
+    """Add library download to queue."""
     library_id = request_data.get("library_id")
     media_type = request_data.get("media_type")  # "album", "playlist", or "song"
 
@@ -1397,9 +1979,6 @@ async def download_from_library(request_data: dict):
     storefront = api.storefront
     url = f"https://music.apple.com/{storefront}/library/{media_type}s/{library_id}"
 
-    # Create new download session
-    session_id = str(uuid.uuid4())
-
     # Create a download request
     download_request = DownloadRequest(
         urls=[url],
@@ -1417,17 +1996,19 @@ async def download_from_library(request_data: dict):
         extra_tags=request_data.get("extra_tags", False),
     )
 
-    # Store session
-    active_sessions[session_id] = {
-        "request": download_request,
-        "status": "pending",
-        "websocket": None,
+    # Add display info for queue
+    display_info = {
+        "title": request_data.get("display_title", f"Library {media_type}"),
+        "type": media_type
     }
 
+    # Add to queue
+    item_id = add_to_queue(download_request, display_info)
+
     return SessionResponse(
-        session_id=session_id,
-        status="pending",
-        message="Download session created. Connect via WebSocket to start."
+        session_id=item_id,
+        status="queued",
+        message="Download added to queue"
     )
 
 
