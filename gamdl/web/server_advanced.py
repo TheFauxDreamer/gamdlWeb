@@ -119,6 +119,90 @@ class SessionResponse(BaseModel):
     message: str
 
 
+# WebUI Configuration Management
+
+# Config file location
+CONFIG_DIR = Path.home() / ".gamdl"
+CONFIG_FILE = CONFIG_DIR / "webui_config.json"
+
+
+def load_webui_config() -> dict:
+    """Load webUI configuration from disk."""
+    try:
+        if CONFIG_FILE.exists():
+            with open(CONFIG_FILE, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        logger.warning(f"Failed to load webUI config: {e}")
+    return {}
+
+
+def save_webui_config(config: dict):
+    """Save webUI configuration to disk."""
+    try:
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(config, f, indent=2)
+        logger.info(f"Saved webUI config to {CONFIG_FILE}")
+    except Exception as e:
+        logger.error(f"Failed to save webUI config: {e}")
+
+
+def get_preferred_cookies_path() -> str:
+    """Get user's preferred cookies path from config, or default."""
+    config = load_webui_config()
+    cookies_path = config.get('cookies_path')
+
+    if cookies_path and cookies_path.strip():
+        logger.info(f"Using cookies path from config: {cookies_path}")
+        return cookies_path
+
+    default_path = str(Path.home() / ".gamdl" / "cookies.txt")
+    logger.info(f"No config found, using default cookies path: {default_path}")
+    return default_path
+
+
+async def initialize_api_from_cookies(cookies_path: str = None) -> bool:
+    """
+    Initialize Apple Music API from cookies file.
+    Returns True if successful, False otherwise.
+    """
+    # Check if already initialized
+    if hasattr(app.state, "api") and app.state.api is not None:
+        logger.info("API already initialized")
+        return True
+
+    # Get cookies path
+    if not cookies_path:
+        cookies_path = get_preferred_cookies_path()
+
+    # Expand ~ if present
+    cookies_path = cookies_path.strip()
+    if cookies_path.startswith("~"):
+        cookies_path = str(Path(cookies_path).expanduser())
+
+    # Check if cookies file exists
+    cookies_file = Path(cookies_path)
+    if not cookies_file.exists():
+        logger.warning(f"Cookies file not found at {cookies_path}")
+        return False
+
+    try:
+        # Initialize API
+        api = await AppleMusicApi.create_from_netscape_cookies(
+            cookies_path=cookies_path,
+        )
+
+        # Store globally
+        app.state.api = api
+        logger.info(f"Apple Music API initialized successfully from {cookies_path}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to initialize API: {e}")
+        return False
+
+
 # Queue Management Functions
 
 def extract_display_info_from_url(url: str) -> dict:
@@ -458,6 +542,23 @@ async def process_queue():
         queue_processor_running = False
         logger.info("Queue processor stopped")
 
+
+# FastAPI Event Handlers
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize API on startup if cookies exist."""
+    logger.info("Server startup: attempting to initialize Apple Music API")
+
+    success = await initialize_api_from_cookies()
+
+    if success:
+        logger.info("API initialized successfully - library browser ready")
+    else:
+        logger.info("API not initialized - library browser will require cookies configuration")
+
+
+# API Routes
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
@@ -1997,6 +2098,19 @@ async def root():
                 localStorage.setItem('gamdl_retry_delay', retryDelay);
                 localStorage.setItem('gamdl_song_delay', songDelay);
                 localStorage.setItem('gamdl_queue_item_delay', queueItemDelay);
+
+                // Also save cookies path to server-side config
+                if (cookiesPath && cookiesPath.trim() !== '') {
+                    fetch('/api/config/cookies-path', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            cookies_path: cookiesPath
+                        })
+                    }).catch(err => {
+                        console.error('Failed to save cookies path to server config:', err);
+                    });
+                }
             }
 
             function saveAllSettings() {
@@ -2314,6 +2428,23 @@ async def clear_queue_endpoint():
     return {"status": "cleared", "message": "Completed items cleared"}
 
 
+@app.post("/api/config/cookies-path")
+async def save_cookies_path_config(request_data: dict):
+    """Save user's preferred cookies path to server-side config."""
+    cookies_path = request_data.get("cookies_path", "")
+
+    # Load existing config
+    config = load_webui_config()
+
+    # Update cookies path
+    config["cookies_path"] = cookies_path
+
+    # Save to disk
+    save_webui_config(config)
+
+    return {"success": True, "message": "Cookies path saved to configuration"}
+
+
 @app.post("/api/download", response_model=SessionResponse)
 async def start_download(request: DownloadRequest):
     """Add download to queue instead of starting immediately."""
@@ -2360,7 +2491,7 @@ async def get_library_albums(
     if not hasattr(app.state, "api") or app.state.api is None:
         raise HTTPException(
             status_code=401,
-            detail="API not initialized. Please start a download session first to initialize API."
+            detail="API not initialized. Please set your cookies path in Settings, then restart the server."
         )
 
     api = app.state.api
@@ -2420,7 +2551,7 @@ async def get_library_playlists(
     if not hasattr(app.state, "api") or app.state.api is None:
         raise HTTPException(
             status_code=401,
-            detail="API not initialized. Please start a download session first to initialize API."
+            detail="API not initialized. Please set your cookies path in Settings, then restart the server."
         )
 
     api = app.state.api
@@ -2480,7 +2611,7 @@ async def get_library_songs(
     if not hasattr(app.state, "api") or app.state.api is None:
         raise HTTPException(
             status_code=401,
-            detail="API not initialized. Please start a download session first to initialize API."
+            detail="API not initialized. Please set your cookies path in Settings, then restart the server."
         )
 
     api = app.state.api
@@ -2547,7 +2678,7 @@ async def download_from_library(request_data: dict):
     if not hasattr(app.state, "api") or app.state.api is None:
         raise HTTPException(
             status_code=401,
-            detail="API not initialized. Please start a download session first to initialize API."
+            detail="API not initialized. Please set your cookies path in Settings, then restart the server."
         )
 
     api = app.state.api
@@ -2909,6 +3040,11 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
 
         # Store API instance globally for library endpoints
         app.state.api = api
+
+        # Save cookies path to config for future startups
+        config = load_webui_config()
+        config["cookies_path"] = cookies_path
+        save_webui_config(config)
 
         # Initialize iTunes API
         itunes_api = ItunesApi(
