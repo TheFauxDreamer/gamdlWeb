@@ -525,6 +525,16 @@ async def process_queue():
                         logger.info(f"Waiting {queue_item_delay} seconds before next queue item")
                         await asyncio.sleep(queue_item_delay)
 
+                except DependencyMissing as e:
+                    # Dependency missing - mark as failed but DON'T pause queue
+                    logger.warning(f"Dependency missing for queue item {next_item.id}: {e}")
+
+                    with queue_lock:
+                        next_item.status = QueueItemStatus.FAILED
+                        next_item.error_message = str(e)
+                        next_item.completed_at = datetime.now()
+                        # Don't set queue_paused - let queue continue
+
                 except Exception as e:
                     # Download failed (after retries exhausted)
                     logger.error(f"Error processing queue item: {e}", exc_info=True)
@@ -3194,11 +3204,10 @@ async def root():
                     let actionButton = '';
                     if (item.status === 'queued') {
                         actionButton = `<button class="queue-item-remove" onclick="removeQueueItem('${item.id}')">Remove</button>`;
-                    } else if (item.status === 'downloading') {
-                        actionButton = `<button class="queue-item-view" onclick="viewDownloadProgress('${item.id}')">View Progress</button>`;
                     } else if (item.status === 'failed') {
                         actionButton = `<button class="queue-item-remove" onclick="removeQueueItem('${item.id}')">Remove</button>`;
                     }
+                    // Note: No "View Progress" button for downloading items since they run in background without WebSocket
 
                     const errorMessage = item.error_message ?
                         `<div class="queue-item-error">Error: ${escapeHtml(item.error_message)}</div>` : '';
@@ -3240,12 +3249,15 @@ async def root():
                 // Show the progress container
                 document.getElementById('progressContainer').classList.add('active');
 
-                // The WebSocket should already be connected for this item
-                // If not, we can reconnect using the item ID
-                if (!ws || ws.readyState !== WebSocket.OPEN) {
-                    sessionId = itemId;
-                    connectWebSocket();
+                // Check if this item has an active WebSocket session
+                // Note: Items downloaded from the queue may not have a WebSocket
+                if (sessionId === itemId && ws && ws.readyState === WebSocket.OPEN) {
+                    // WebSocket already connected for this item
+                    return;
                 }
+
+                // Can't view progress for completed/failed items without active WebSocket
+                addLog(`Cannot view live progress for this item. Check queue status for details.`, 'warning');
             }
 
             function escapeHtml(text) {
@@ -4488,6 +4500,9 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
                         await send_log(f"Waiting {song_delay} seconds before next song...", "info")
                         await asyncio.sleep(song_delay)
 
+            except DependencyMissing:
+                # Re-raise DependencyMissing to propagate to queue processor
+                raise
             except Exception as e:
                 await send_log(f"Error processing URL: {str(e)}", "error")
                 logger.exception(f"Full traceback for URL {url}:")
