@@ -1406,6 +1406,7 @@ async def root():
                 <div class="button-group">
                     <button type="submit" id="downloadBtn">Start Download</button>
                     <button type="button" id="cancelBtn" class="cancel" disabled>Cancel</button>
+                    <button type="button" onclick="window.open('https://music.apple.com/au/home', '_blank')" style="background: #FA243C; margin-left: auto;">Open Apple Music</button>
                 </div>
             </form>
 
