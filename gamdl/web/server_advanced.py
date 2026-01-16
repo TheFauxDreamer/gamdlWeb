@@ -134,6 +134,8 @@ class DownloadRequest(BaseModel):
 
     # Podcast-specific
     podcast_name: Optional[str] = None
+    episode_title: Optional[str] = None
+    episode_date: Optional[str] = None
 
     # Retry & delay settings
     enable_retry_delay: bool = True  # Enable/disable retry and delay features
@@ -3856,14 +3858,14 @@ async def root():
                     downloadBtn.textContent = 'Download';
                     downloadBtn.className = 'btn-primary';
                     downloadBtn.style.marginLeft = '15px';
-                    downloadBtn.onclick = () => downloadPodcastEpisode(episode.url, episode.title);
+                    downloadBtn.onclick = () => downloadPodcastEpisode(episode.url, episode.title, episode.date);
                     episodeDiv.appendChild(downloadBtn);
 
                     list.appendChild(episodeDiv);
                 });
             }
 
-            async function downloadPodcastEpisode(episodeUrl, episodeTitle) {
+            async function downloadPodcastEpisode(episodeUrl, episodeTitle, episodeDate) {
                 if (!episodeUrl) {
                     alert('Episode URL not available');
                     return;
@@ -3876,6 +3878,7 @@ async def root():
                         body: JSON.stringify({
                             episode_url: episodeUrl,
                             episode_title: episodeTitle,
+                            episode_date: episodeDate,
                             podcast_name: window.currentPodcastName || 'Unknown Podcast'
                         })
                     });
@@ -5187,6 +5190,7 @@ async def download_podcast_episode_endpoint(request: Request):
         request_data = await request.json()
         episode_url = request_data.get("episode_url")
         episode_title = request_data.get("episode_title", "Podcast Episode")
+        episode_date = request_data.get("episode_date")
         podcast_name = request_data.get("podcast_name", "Unknown Podcast")
 
         if not episode_url:
@@ -5219,6 +5223,8 @@ async def download_podcast_episode_endpoint(request: Request):
             no_lyrics=config.get('no_lyrics', False),
             extra_tags=config.get('extra_tags', False),
             podcast_name=podcast_name,
+            episode_title=episode_title,
+            episode_date=episode_date,
         )
 
         # Add to queue with podcast-specific display info
@@ -6128,27 +6134,68 @@ async def download_podcast_episodes(session_id: str, session: dict, websocket: W
                     response = await client.get(url)
                     response.raise_for_status()
 
-                    # Extract filename from URL or Content-Disposition header
-                    filename = None
+                    # Extract file extension from URL or Content-Disposition header
+                    file_extension = None
                     if "Content-Disposition" in response.headers:
                         import re
                         disposition = response.headers["Content-Disposition"]
                         match = re.findall(r'filename="?([^"]+)"?', disposition)
                         if match:
-                            filename = match[0]
+                            original_filename = match[0]
+                            # Extract extension from original filename
+                            if '.' in original_filename:
+                                file_extension = '.' + original_filename.rsplit('.', 1)[1]
 
-                    if not filename:
-                        # Extract from URL
+                    if not file_extension:
+                        # Extract extension from URL
+                        from urllib.parse import urlparse, unquote
+                        parsed = urlparse(url)
+                        url_filename = unquote(Path(parsed.path).name)
+                        # Remove query parameters
+                        if '?' in url_filename:
+                            url_filename = url_filename.split('?')[0]
+                        # Extract extension
+                        if '.' in url_filename:
+                            file_extension = '.' + url_filename.rsplit('.', 1)[1]
+
+                    # Default to .mp3 if no extension found
+                    if not file_extension or not file_extension.lower().endswith(('.mp3', '.m4a', '.mp4', '.aac')):
+                        file_extension = '.mp3'
+
+                    # Build filename with date prefix and episode title
+                    if request.episode_date and request.episode_title:
+                        # Parse date and format as YYYY-MM-DD
+                        from datetime import datetime
+                        try:
+                            date_obj = datetime.fromisoformat(request.episode_date.replace('Z', '+00:00'))
+                            date_prefix = date_obj.strftime('%Y-%m-%d')
+                        except (ValueError, AttributeError):
+                            date_prefix = None
+
+                        if date_prefix:
+                            # Sanitize episode title for filename
+                            import re
+                            safe_title = re.sub(r'[\\/:*?"<>|]', '_', request.episode_title)
+                            filename = f"{date_prefix} - {safe_title}{file_extension}"
+                        else:
+                            # No valid date, use title only
+                            import re
+                            safe_title = re.sub(r'[\\/:*?"<>|]', '_', request.episode_title)
+                            filename = f"{safe_title}{file_extension}"
+                    elif request.episode_title:
+                        # No date, use title only
+                        import re
+                        safe_title = re.sub(r'[\\/:*?"<>|]', '_', request.episode_title)
+                        filename = f"{safe_title}{file_extension}"
+                    else:
+                        # Fallback to URL-based filename
                         from urllib.parse import urlparse, unquote
                         parsed = urlparse(url)
                         filename = unquote(Path(parsed.path).name)
-                        # Remove query parameters if they ended up in filename
                         if '?' in filename:
                             filename = filename.split('?')[0]
-
-                    # Ensure filename has extension
-                    if not filename.endswith(('.mp3', '.m4a', '.mp4', '.aac')):
-                        filename += '.mp3'
+                        if not filename.endswith(('.mp3', '.m4a', '.mp4', '.aac')):
+                            filename += file_extension
 
                     # Save to podcast-specific directory
                     filepath = output_dir / filename
