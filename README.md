@@ -51,7 +51,8 @@ pip install -e ".[web]"
 5. Once complete, in the Terminal type:
 ```
 gamdl-web --advanced
-```or
+```
+or
 ```
 gamdl-web
 ```
