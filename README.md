@@ -5,6 +5,7 @@ A CLI & Web-based GUI app for downloading Apple Music songs, & music videos.
 -------------------------------------------------------------------------------------------------------------------------------
 **Disclaimer:** I know very little about Python, this is all thanks to Claude.
 
+PODCASTS
 
 # Unique Features in my Fork
 
