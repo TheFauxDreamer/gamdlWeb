@@ -364,8 +364,12 @@ async def handle_new_tracks(playlist_info: dict, new_track_ids: set):
     # Fetch metadata and queue each track
     for track_id in new_track_ids:
         try:
-            # Fetch song metadata from Apple Music API
-            song_data = await api.get_song(track_id, extend="", include="")
+            # Fetch song metadata from Apple Music API using appropriate endpoint
+            # Use library or catalog API based on playlist type
+            if playlist_info['playlist_type'] == 'library':
+                song_data = await api.get_library_song(track_id, extend="", include="")
+            else:
+                song_data = await api.get_song(track_id, extend="", include="")
 
             if song_data and song_data.get("data"):
                 song_attrs = song_data["data"][0]["attributes"]
