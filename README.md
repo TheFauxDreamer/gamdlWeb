@@ -9,7 +9,7 @@ A CLI & Web-based GUI app for downloading Apple Music songs, & music videos.
 # Unique Features in my Fork
 
 ## ✅ Current Features
-These work to a degree I haven't encountered major issues or bugs that break the experience.
+These work well enough that I haven't encountered major issues or bugs that break the experience.
 
 - WebUI Basic (offers simple CLI features)
 - WebUI Advanced (offers an improved GUI experience for your Apple Music Library like one-click downloads!)
@@ -29,7 +29,7 @@ These are in "active" development and in varying states of useability.
 
 
 ## 🗓️ Future Features
-These will come in time, I don't have a timeline tho.
+These will come in time (maybe), I don't have a timeline tho.
 
 - Fix the "null songs" count in WebUI playlists
 
