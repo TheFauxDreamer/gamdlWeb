@@ -26,12 +26,15 @@ These work well enough that I haven't encountered major issues or bugs that brea
 These are in "active" development and in varying states of useability.
 
 - Apple Podcast Support
+- Download part of an Artists Discography
 
 
 ## 🗓️ Future Features
 These will come in time (maybe), I don't have a timeline tho.
 
 - Fix the "null songs" count in WebUI playlists
+- A better UI
+- Improved Download Queue information
 
 -------------------------------------------------------------------------------------------------------------------------------
 
