@@ -383,8 +383,16 @@ async def handle_new_tracks(playlist_info: dict, new_track_ids: set):
             display_title = f"Monitored: {track_id}"
             logger.warning(f"Failed to fetch metadata for track {track_id}: {e}. Using ID as title.")
 
-        # Build track URL
-        track_url = f"https://music.apple.com/us/song/{track_id}"
+        # Build track URL based on playlist type
+        if playlist_info['playlist_type'] == 'library':
+            # Library songs need /library/songs/ prefix
+            # Also need to get storefront from API
+            api = app.state.api
+            storefront = api.storefront
+            track_url = f"https://music.apple.com/{storefront}/library/songs/{track_id}"
+        else:
+            # Catalog songs use /song/ prefix
+            track_url = f"https://music.apple.com/us/song/{track_id}"
 
         # Get webUI config for default settings
         config = load_webui_config()
@@ -418,7 +426,19 @@ async def handle_new_tracks(playlist_info: dict, new_track_ids: set):
 
 async def _queue_track_without_metadata(track_id: str, playlist_info: dict):
     """Fallback function to queue track without metadata (for error cases)."""
-    track_url = f"https://music.apple.com/us/song/{track_id}"
+    # Build track URL based on playlist type
+    if playlist_info['playlist_type'] == 'library':
+        # Library songs need /library/songs/ prefix
+        # Need to initialize API to get storefront
+        if not hasattr(app.state, "api") or app.state.api is None:
+            await initialize_api_from_cookies()
+        api = app.state.api
+        storefront = api.storefront
+        track_url = f"https://music.apple.com/{storefront}/library/songs/{track_id}"
+    else:
+        # Catalog songs use /song/ prefix
+        track_url = f"https://music.apple.com/us/song/{track_id}"
+
     config = load_webui_config()
 
     download_request = DownloadRequest(
