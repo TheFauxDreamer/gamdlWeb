@@ -15,11 +15,12 @@ These work well enough that I haven't encountered major issues or bugs that brea
 - WebUI Advanced (offers an improved GUI experience for your Apple Music Library like one-click downloads!)
 - Queue downloads & management
 - Retry failed download
-- Pause after failures
+- Pause after failed downloads
 - Delay between downloads
 - Search feature (no need to open a seperate apple music tab)
 - One-click, download entire artist discography (albums, songs, EPs)
 - Set a monitored playlist to download new additions automatically
+- Continue after failed downloads
 
 
 ## ⚠️ WIP Features
