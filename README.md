@@ -28,7 +28,7 @@ These work well enough that I haven't encountered major issues or bugs that brea
 ## ⚠️ WIP Features
 These are in "active" development and in varying states of useability. (Check the branches for these features)
 
-- Apple Podcast Support
+- Apple Podcast Support ([Try it early](https://github.com/TheFauxDreamer/gamdl/tree/podcasts))
 - Download part of an Artists Discography
 
 
