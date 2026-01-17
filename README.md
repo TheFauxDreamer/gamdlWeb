@@ -21,8 +21,8 @@ These work well enough that I haven't encountered major issues or bugs that brea
 - Delay between downloads
 - Search feature (no need to open a seperate apple music tab)
 - One-click, download entire artist discography (albums, songs, EPs)
-- Set a monitored playlist to download new additions automatically
-- Continue after failed downloads
+- Set a monitored playlist to download new additions automatically (checks every 2 hours)
+- Continue queue after failed downloads
 
 
 ## ⚠️ WIP Features
