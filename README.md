@@ -45,18 +45,20 @@ These will come in time (maybe), I don't have a timeline tho.
 
 1. Have [Python](https://www.python.org/downloads/) installed.
 
-2. Download the code from this repository (from the green Code button)
+2. Have the latest full version of [ffmpeg](https://www.ffmpeg.org/download.html) installed.
 
-3. Unzip and save it somewhere like Documents
+3. Download the code from this repository (from the green Code button)
+   
+4. Unzip and save it somewhere like Documents
 
-4. Right click on the gamdl folder, select "Open a Terminal"
+5. Right click on the gamdl folder, select "Open a Terminal"
 
-5. Enter the following into the Terminal to setup the tool & download the essential dependencies:
+6. Enter the following into the Terminal to setup the tool & download the essential dependencies:
 ```
 pip install -e ".[web]"
 ```
 
-6. Once complete, in the Terminal type:
+7. Once complete, in the Terminal type:
 ```
 gamdl-web --advanced
 ```
@@ -64,7 +66,7 @@ or
 ```
 gamdl-web
 ```
-7. This will start the tool, and automatically open a web browser with the WebUI (The --advanced option contains the above features).
+8. This will start the tool, and automatically open a web browser with the WebUI (The --advanced option contains the above features).
 
 
 See [WEB_UI_QUICKSTART.md](WEB_UI_QUICKSTART.md) for detailed instructions.
