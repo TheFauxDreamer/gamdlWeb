@@ -149,6 +149,10 @@ class DownloadRequest(BaseModel):
     # Queue behavior
     continue_on_error: bool = False  # Continue queue processing even if items fail
 
+    # Display customization (optional)
+    display_title: Optional[str] = None  # Custom display name for queue
+    display_type: Optional[str] = None  # Custom display type (e.g., "Discography", "Artist")
+
 
 class SessionResponse(BaseModel):
     session_id: str
@@ -3443,7 +3447,7 @@ async def root():
                             output_path: document.getElementById('outputPath').value,
                             song_codec: document.getElementById('songCodec').value,
                             music_video_resolution: document.getElementById('musicVideoResolution').value,
-                            cover_size: document.getElementById('coverSize').value,
+                            cover_size: parseInt(document.getElementById('coverSize').value) || null,
                             cover_format: document.getElementById('coverFormat').value,
                             no_cover: document.getElementById('noCover').checked,
                             no_lyrics: document.getElementById('noLyrics').checked,
@@ -3454,6 +3458,8 @@ async def root():
                             song_delay: parseFloat(document.getElementById('songDelay').value) || 0,
                             queue_item_delay: parseFloat(document.getElementById('queueItemDelay').value) || 0,
                             continue_on_error: document.getElementById('continueOnError').checked,
+                            display_title: `${artist.name} - Discography`,
+                            display_type: 'Discography',
                         })
                     });
 
@@ -3467,10 +3473,14 @@ async def root():
                 }
             }
 
+            let currentArtist = null;
             let currentArtistCatalog = null;
             let selectedArtistItems = new Set();
 
             async function viewArtistContent(artist) {
+                // Store current artist for use in download
+                currentArtist = artist;
+
                 // Show modal
                 document.getElementById('artistModal').style.display = 'flex';
                 document.getElementById('artistModalTitle').textContent = `${artist.name} - All Content`;
@@ -3639,6 +3649,14 @@ async def root():
                 try {
                     const urls = Array.from(selectedArtistItems);
 
+                    // Determine display title based on selection
+                    let displayTitle = currentArtist ? `${currentArtist.name} - Selected Content` : 'Selected Content';
+                    if (urls.length === 1) {
+                        displayTitle = currentArtist ? `${currentArtist.name} - 1 item` : '1 item';
+                    } else {
+                        displayTitle = currentArtist ? `${currentArtist.name} - ${urls.length} items` : `${urls.length} items`;
+                    }
+
                     const response = await fetch('/api/download', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
@@ -3648,7 +3666,7 @@ async def root():
                             output_path: document.getElementById('outputPath').value,
                             song_codec: document.getElementById('songCodec').value,
                             music_video_resolution: document.getElementById('musicVideoResolution').value,
-                            cover_size: document.getElementById('coverSize').value,
+                            cover_size: parseInt(document.getElementById('coverSize').value) || null,
                             cover_format: document.getElementById('coverFormat').value,
                             no_cover: document.getElementById('noCover').checked,
                             no_lyrics: document.getElementById('noLyrics').checked,
@@ -3659,6 +3677,8 @@ async def root():
                             song_delay: parseFloat(document.getElementById('songDelay').value) || 0,
                             queue_item_delay: parseFloat(document.getElementById('queueItemDelay').value) || 0,
                             continue_on_error: document.getElementById('continueOnError').checked,
+                            display_title: displayTitle,
+                            display_type: 'Artist',
                         })
                     });
 
@@ -5389,9 +5409,17 @@ async def get_artist_catalog(
 @app.post("/api/download", response_model=SessionResponse)
 async def start_download(request: DownloadRequest):
     """Add download to queue instead of starting immediately."""
-    # Extract display info from URLs
+    # Extract display info from URLs or use custom display info
     display_info = None
-    if request.urls:
+
+    # Use custom display info if provided
+    if request.display_title or request.display_type:
+        display_info = {
+            "title": request.display_title or "Unknown",
+            "type": request.display_type or "url"
+        }
+    elif request.urls:
+        # Fall back to extracting from URL
         first_url = request.urls[0]
         url_info = extract_display_info_from_url(first_url)
 
@@ -6397,6 +6425,18 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
         logger.info(f"request.urls value: {request.urls}")
         await send_log(f"Processing {len(request.urls)} URL(s)...")
 
+        # Set initial progress tracking based on whether we're downloading multiple URLs
+        # For multi-URL downloads (like discographies), track at URL level
+        # For single URL downloads, track at track level
+        use_url_level_progress = len(request.urls) > 1
+
+        if use_url_level_progress and current_downloading_item:
+            # Initialize progress for multi-URL download
+            with queue_lock:
+                current_downloading_item.progress_total = len(request.urls)
+                current_downloading_item.progress_current = 0
+            await broadcast_queue_update()
+
         # Process each URL
         logger.info(f"Entering URL processing loop with {len(request.urls)} URLs")
         for url_index, url in enumerate(request.urls, 1):
@@ -6408,6 +6448,12 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
 
             await send_log(f"[URL {url_index}/{len(request.urls)}] Processing: {url}")
             logger.info(f"After send_log, about to get URL info for: {url}")
+
+            # Update progress for multi-URL downloads at URL level
+            if use_url_level_progress and current_downloading_item:
+                with queue_lock:
+                    current_downloading_item.progress_current = url_index - 1
+                await broadcast_queue_update()
 
             try:
                 # Get URL info
@@ -6433,8 +6479,9 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
                 await send_log(f"Found {len(download_queue)} track(s) to download", "success")
                 logger.info(f"About to download {len(download_queue)} tracks")
 
-                # Update queue item total progress
-                if current_downloading_item:
+                # Update queue item total progress for single URL downloads only
+                # For multi-URL downloads, we already set this at the URL level
+                if not use_url_level_progress and current_downloading_item:
                     with queue_lock:
                         current_downloading_item.progress_total = len(download_queue)
                         current_downloading_item.progress_current = 0
@@ -6456,8 +6503,9 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
 
                     await send_log(f"[Track {download_index}/{len(download_queue)}] Downloading: {media_title}")
 
-                    # Update queue item progress
-                    if current_downloading_item:
+                    # Update queue item progress only for single URL downloads
+                    # For multi-URL downloads, progress is tracked at URL level
+                    if not use_url_level_progress and current_downloading_item:
                         with queue_lock:
                             current_downloading_item.progress_current = download_index
                         await broadcast_queue_update()
@@ -6506,6 +6554,12 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
             if not download_queue:
                 await send_log("No download queue available, skipping URL", "warning")
                 continue
+
+            # Update progress after successfully completing this URL (for multi-URL downloads)
+            if use_url_level_progress and current_downloading_item:
+                with queue_lock:
+                    current_downloading_item.progress_current = url_index
+                await broadcast_queue_update()
 
         # If any download failed after retries, raise error to trigger queue pause
         if any_failed:
