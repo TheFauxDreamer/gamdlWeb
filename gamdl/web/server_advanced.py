@@ -3869,7 +3869,7 @@ async def root():
 
             async function downloadPodcastEpisode(episodeUrl, episodeTitle, episodeDate) {
                 if (!episodeUrl) {
-                    alert('Episode URL not available');
+                    console.error('Episode URL not available');
                     return;
                 }
 
@@ -3885,14 +3885,12 @@ async def root():
                         })
                     });
 
-                    if (response.ok) {
-                        alert('Episode added to download queue');
-                    } else {
+                    if (!response.ok) {
                         const error = await response.json();
-                        alert(`Download failed: ${error.detail || 'Unknown error'}`);
+                        console.error('Download failed:', error.detail || 'Unknown error');
                     }
                 } catch (error) {
-                    alert(`Error: ${error.message}`);
+                    console.error('Error queueing download:', error.message);
                 }
             }
 
