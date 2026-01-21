@@ -3242,7 +3242,14 @@ async def root():
                 }
 
                 currentSearchQuery = query;
-                searchOffsets = { songs: 0, albums: 0, artists: 0, playlists: 0 };
+                searchOffsets = {
+                    songs: 0,
+                    albums: 0,
+                    artists: 0,
+                    playlists: 0,
+                    'music-videos': 0,
+                    'podcasts': 0
+                };
 
                 document.getElementById('allLoading').style.display = 'block';
                 document.getElementById('allGrid').innerHTML = '';
