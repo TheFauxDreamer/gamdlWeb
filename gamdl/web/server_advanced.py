@@ -1305,6 +1305,25 @@ async def root():
                 margin-bottom: 20px;
                 border-bottom: 2px solid #e0e0e0;
                 padding-bottom: 0;
+                overflow-x: auto;
+                overflow-y: hidden;
+                flex-wrap: nowrap;
+                scroll-behavior: smooth;
+                -webkit-overflow-scrolling: touch;
+            }
+            /* Scrollbar styling for desktop */
+            .nav-tabs::-webkit-scrollbar {
+                height: 4px;
+            }
+            .nav-tabs::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .nav-tabs::-webkit-scrollbar-thumb {
+                background: #ccc;
+                border-radius: 2px;
+            }
+            .nav-tabs::-webkit-scrollbar-thumb:hover {
+                background: #999;
             }
             .nav-tab {
                 padding: 10px 20px;
@@ -1317,6 +1336,8 @@ async def root():
                 border-bottom: 2px solid transparent;
                 margin-bottom: -2px;
                 transition: all 0.2s;
+                white-space: nowrap;
+                flex-shrink: 0;
             }
             .nav-tab:hover {
                 color: #007aff;
@@ -2429,6 +2450,21 @@ async def root():
                 /* Monitor stats - single column */
                 .monitor-stats {
                     grid-template-columns: 1fr;
+                }
+
+                /* Scrollable tabs on mobile - hide scrollbar for cleaner look */
+                .nav-tabs {
+                    scrollbar-width: none;
+                    -ms-overflow-style: none;
+                }
+                .nav-tabs::-webkit-scrollbar {
+                    display: none;
+                }
+
+                /* Slightly smaller tabs on mobile */
+                .nav-tab {
+                    padding: 8px 16px;
+                    font-size: 14px;
                 }
             }
 
@@ -4325,6 +4361,12 @@ async def root():
                 tabs.forEach(t => t.classList.remove('active'));
                 if (clickedElement) {
                     clickedElement.classList.add('active');
+                    // Auto-scroll the active tab into view
+                    clickedElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest',
+                        inline: 'center'
+                    });
                 } else {
                     tabs.forEach(t => {
                         const tabText = t.textContent.toLowerCase();
