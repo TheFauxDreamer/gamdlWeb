@@ -901,7 +901,7 @@ async def process_queue():
             if websocket:
                 # Run download with WebSocket updates
                 try:
-                    await run_download_session(session_id, active_sessions[session_id], websocket)
+                    summary_message = await run_download_session(session_id, active_sessions[session_id], websocket)
 
                     # Success - apply queue item delay if configured
                     request = next_item.download_request
@@ -911,6 +911,7 @@ async def process_queue():
                     with queue_lock:
                         next_item.status = QueueItemStatus.COMPLETED
                         next_item.completed_at = datetime.now()
+                        next_item.error_message = summary_message  # Store summary for queue UI
 
                     if queue_item_delay > 0:
                         logger.info(f"Waiting {queue_item_delay} seconds before next queue item")
@@ -973,7 +974,7 @@ async def process_queue():
                     class DummyWebSocket:
                         async def send_json(self, data): pass
 
-                    await run_download_session(session_id, active_sessions[session_id], DummyWebSocket())
+                    summary_message = await run_download_session(session_id, active_sessions[session_id], DummyWebSocket())
 
                     # Success - apply queue item delay if configured
                     request = next_item.download_request
@@ -983,6 +984,7 @@ async def process_queue():
                     with queue_lock:
                         next_item.status = QueueItemStatus.COMPLETED
                         next_item.completed_at = datetime.now()
+                        next_item.error_message = summary_message  # Store summary for queue UI
 
                     if queue_item_delay > 0:
                         logger.info(f"Waiting {queue_item_delay} seconds before next queue item")
@@ -4373,8 +4375,17 @@ async def root():
                     }
                     // Note: No "View Progress" button for downloading items since they run in background without WebSocket
 
-                    const errorMessage = item.error_message ?
-                        `<div class="queue-item-error">Error: ${escapeHtml(item.error_message)}</div>` : '';
+                    // Display completion/error message (error_message field is used for both)
+                    let statusMessage = '';
+                    if (item.error_message) {
+                        if (item.status === 'completed') {
+                            // For completed items, show message without "Error:" prefix
+                            statusMessage = `<div class="queue-item-info">${escapeHtml(item.error_message)}</div>`;
+                        } else if (item.status === 'failed') {
+                            // For failed items, show with "Error:" prefix
+                            statusMessage = `<div class="queue-item-error">Error: ${escapeHtml(item.error_message)}</div>`;
+                        }
+                    }
 
                     const urlInfo = item.url_count > 1 ?
                         `<div class="queue-item-info">${item.url_count} URLs</div>` : '';
@@ -4424,7 +4435,7 @@ async def root():
                             </div>
                             ${urlInfo}
                             ${statsHtml}
-                            ${errorMessage}
+                            ${statusMessage}
                             <div class="queue-item-actions">
                                 ${actionButton}
                             </div>
@@ -6213,7 +6224,7 @@ async def download_with_retry(
             # File already exists - treat as skip
             await websocket.send_json({
                 "type": "log",
-                "message": f"Skipping: {str(e)}",
+                "message": f"Already downloaded (file exists): {track_name}",
                 "level": "info"
             })
             return "skipped"  # Skip, don't retry
@@ -6510,9 +6521,6 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
         song_delay = getattr(request, 'song_delay', 0.0) if enable_retry_delay else 0.0
         queue_item_delay = getattr(request, 'queue_item_delay', 0.0) if enable_retry_delay else 0.0
 
-        # Track if any download failed after retries
-        any_failed = False
-
         # Initialize API - handle empty strings and expand ~ paths
         cookies_path = request.cookies_path
         logger.info(f"Received cookies_path: {repr(cookies_path)}")
@@ -6704,6 +6712,9 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
                         current_downloading_item.progress_current = 0
                     await broadcast_queue_update()
 
+                # Track individual download results for summary
+                download_results = []
+
                 # Download each item
                 for download_index, download_item in enumerate(download_queue, 1):
                     # Check for cancellation before each download
@@ -6738,6 +6749,9 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
                             session_id=session_id
                         )
 
+                        # Store result for final summary
+                        download_results.append(result)
+
                         # Track statistics for multi-URL downloads
                         if use_url_level_progress and current_downloading_item:
                             with queue_lock:
@@ -6754,7 +6768,6 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
                         elif result == "skipped":
                             await send_log(f"[Track {download_index}/{len(download_queue)}] Skipped: {media_title}", "info")
                         else:
-                            any_failed = True
                             await send_log(f"[Track {download_index}/{len(download_queue)}] Failed after retries: {media_title}", "error")
 
                     except ExecutableNotFound as e:
@@ -6796,12 +6809,39 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
                     current_downloading_item.progress_current = url_index
                 await broadcast_queue_update()
 
-        # If any download failed after retries, raise error to trigger queue pause
-        if any_failed:
-            raise Exception(f"One or more downloads failed after {max_retries + 1} attempts")
+        # Build completion message with counters
+        success_count = sum(1 for r in download_results if r == "success")
+        skipped_count = sum(1 for r in download_results if r == "skipped")
+        failed_count = sum(1 for r in download_results if r == "failed")
+        total_items = len(download_results)
 
-        await send_log("All downloads completed!", "success")
+        # Generate detailed summary message
+        summary_parts = []
+        if success_count > 0:
+            summary_parts.append(f"{success_count} successful")
+        if skipped_count > 0:
+            summary_parts.append(f"{skipped_count} skipped")
+        if failed_count > 0:
+            summary_parts.append(f"{failed_count} failed")
+
+        if summary_parts:
+            summary = f"Download complete: {', '.join(summary_parts)}"
+        else:
+            summary = "Download complete: no items processed"
+
+        # Determine message level based on results
+        if failed_count == total_items and total_items > 0:
+            # All failed - error
+            await send_log(summary, "error")
+        elif failed_count > 0:
+            # Partial failure - warning
+            await send_log(summary, "warning")
+        else:
+            # All successful or skipped - success
+            await send_log(summary, "success")
+
         await websocket.send_json({"type": "complete"})
+        return summary  # Return summary for queue UI display
 
     except Exception as e:
         logger.error(f"Download session error: {e}", exc_info=True)
