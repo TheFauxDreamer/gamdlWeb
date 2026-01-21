@@ -232,6 +232,7 @@ async def initialize_api_from_cookies(cookies_path: str = None) -> bool:
     cookies_file = Path(cookies_path)
     if not cookies_file.exists():
         logger.warning(f"Cookies file not found at {cookies_path}")
+        app.state.api_init_error = f"Cookies file not found at {cookies_path}"
         return False
 
     try:
@@ -242,11 +243,19 @@ async def initialize_api_from_cookies(cookies_path: str = None) -> bool:
 
         # Store globally
         app.state.api = api
+        app.state.api_init_error = None  # Clear any previous error
         logger.info(f"Apple Music API initialized successfully from {cookies_path}")
         return True
 
+    except ValueError as e:
+        # Cookie parsing error (e.g., missing media-user-token)
+        logger.error(f"Invalid cookies: {e}")
+        app.state.api_init_error = f"Invalid cookies: {str(e)}"
+        return False
     except Exception as e:
+        # Other errors (network, API, etc.)
         logger.error(f"Failed to initialize API: {e}")
+        app.state.api_init_error = f"API initialization failed: {str(e)}"
         return False
 
 
@@ -1053,12 +1062,16 @@ async def startup_event():
     """Initialize API on startup if cookies exist."""
     logger.info("Server startup: attempting to initialize Apple Music API")
 
+    # Initialize state
+    app.state.api_init_error = None
+
     success = await initialize_api_from_cookies()
 
     if success:
         logger.info("API initialized successfully - library browser ready")
     else:
-        logger.info("API not initialized - library browser will require cookies configuration")
+        logger.warning("API not initialized - library browser will require cookies configuration")
+        # Error details already stored in app.state.api_init_error by initialize_api_from_cookies()
 
     # Start the playlist monitoring scheduler
     start_monitor_scheduler()
@@ -2133,6 +2146,7 @@ async def root():
 
             <!-- Library Browser View -->
             <div id="libraryView" class="view-section active">
+                <div id="apiInitError" class="library-error" style="display:none;"></div>
                 <div id="libraryError" class="library-error" style="display:none;"></div>
 
                 <!-- Library Type Tabs -->
@@ -2652,6 +2666,33 @@ async def root():
             let completedTracks = 0;
             let skippedTracks = 0;
             let failedTracks = 0;
+
+            // Check API status on page load and show warning if needed
+            async function checkApiStatus() {
+                try {
+                    const response = await fetch('/api/status');
+                    const status = await response.json();
+
+                    if (!status.initialized || !status.active_subscription) {
+                        // Show warning in apiInitError div (separate from libraryError)
+                        const errorDiv = document.getElementById('apiInitError');
+                        errorDiv.innerHTML = `
+                            <strong>⚠️ API Initialization Warning:</strong>
+                            ${status.error || 'Unknown error'}
+                            <br>
+                            <a href="#" onclick="switchView('settings'); return false;">
+                                Click here to configure cookies.txt
+                            </a>
+                        `;
+                        errorDiv.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Failed to check API status:', error);
+                }
+            }
+
+            // Call on page load
+            document.addEventListener('DOMContentLoaded', checkApiStatus);
 
             function toggleCollapsible(header) {
                 const content = header.nextElementSibling;
@@ -5036,6 +5077,61 @@ async def save_cookies_path_config(request_data: dict):
     return {"success": True, "message": "Cookies path saved to configuration"}
 
 
+@app.get("/api/status")
+async def get_api_status():
+    """Get the current API initialization status."""
+    if not hasattr(app.state, "api") or app.state.api is None:
+        error_msg = "API not initialized - cookies.txt may be missing or invalid"
+        if hasattr(app.state, 'api_init_error') and app.state.api_init_error:
+            error_msg = app.state.api_init_error
+        return {
+            "initialized": False,
+            "active_subscription": False,
+            "error": error_msg
+        }
+
+    api = app.state.api
+    has_subscription = hasattr(api, 'active_subscription') and api.active_subscription
+
+    return {
+        "initialized": True,
+        "active_subscription": has_subscription,
+        "storefront": api.storefront if hasattr(api, 'storefront') else None,
+        "error": None if has_subscription else "No active Apple Music subscription or invalid cookies"
+    }
+
+
+@app.post("/api/validate-cookies")
+async def validate_cookies():
+    """Validate cookies and reinitialize API."""
+    success = await initialize_api_from_cookies()
+
+    if success and hasattr(app.state, "api") and app.state.api:
+        return {
+            "valid": True,
+            "active_subscription": app.state.api.active_subscription if hasattr(app.state.api, 'active_subscription') else False,
+            "storefront": app.state.api.storefront if hasattr(app.state.api, 'storefront') else None,
+            "message": "Cookies are valid and API initialized successfully"
+        }
+    else:
+        # Determine specific failure reason
+        from pathlib import Path
+        cookies_path = get_preferred_cookies_path()
+        cookies_file = Path(cookies_path).expanduser()
+
+        if not cookies_file.exists():
+            error_message = f"Cookies file not found at {cookies_path}"
+        else:
+            error_message = "Cookies file exists but is invalid or expired"
+
+        return {
+            "valid": False,
+            "active_subscription": False,
+            "storefront": None,
+            "message": error_message
+        }
+
+
 @app.post("/api/config/all-settings")
 async def save_all_settings_config(request_data: dict):
     """Save all user settings to server-side config for background downloads."""
@@ -5756,10 +5852,23 @@ async def get_library_albums(
     if not hasattr(app.state, "api") or app.state.api is None:
         raise HTTPException(
             status_code=401,
-            detail="API not initialized. Please set your cookies path in Settings, then restart the server. Use this extension to generate cookies.txt: https://addons.mozilla.org/addon/export-cookies-txt"
+            detail="API not initialized. Please configure your cookies.txt in settings."
         )
 
     api = app.state.api
+
+    # Check subscription before attempting library access
+    if not hasattr(api, 'active_subscription') or not api.active_subscription:
+        error_detail = "Library access requires an active Apple Music subscription. "
+        if hasattr(app.state, 'api_init_error') and app.state.api_init_error:
+            error_detail += app.state.api_init_error
+        else:
+            error_detail += "Please check your cookies.txt is valid and not expired."
+
+        raise HTTPException(
+            status_code=403,
+            detail=error_detail
+        )
 
     try:
         response = await api.get_all_library_albums(
@@ -5768,10 +5877,8 @@ async def get_library_albums(
         )
 
         if not response:
-            raise HTTPException(
-                status_code=403,
-                detail="No active subscription or library access denied"
-            )
+            # This now means truly empty library, not auth failure
+            return {"data": [], "total": 0, "next_offset": None}
 
         albums = response.get("data", [])
 
@@ -5816,10 +5923,23 @@ async def get_library_playlists(
     if not hasattr(app.state, "api") or app.state.api is None:
         raise HTTPException(
             status_code=401,
-            detail="API not initialized. Please set your cookies path in Settings, then restart the server. Use this extension to generate cookies.txt: https://addons.mozilla.org/addon/export-cookies-txt"
+            detail="API not initialized. Please configure your cookies.txt in settings."
         )
 
     api = app.state.api
+
+    # Check subscription before attempting library access
+    if not hasattr(api, 'active_subscription') or not api.active_subscription:
+        error_detail = "Library access requires an active Apple Music subscription. "
+        if hasattr(app.state, 'api_init_error') and app.state.api_init_error:
+            error_detail += app.state.api_init_error
+        else:
+            error_detail += "Please check your cookies.txt is valid and not expired."
+
+        raise HTTPException(
+            status_code=403,
+            detail=error_detail
+        )
 
     try:
         response = await api.get_all_library_playlists(
@@ -5828,10 +5948,8 @@ async def get_library_playlists(
         )
 
         if not response:
-            raise HTTPException(
-                status_code=403,
-                detail="No active subscription or library access denied"
-            )
+            # This now means truly empty library, not auth failure
+            return {"data": [], "total": 0, "next_offset": None}
 
         playlists = response.get("data", [])
 
@@ -5876,10 +5994,23 @@ async def get_library_songs(
     if not hasattr(app.state, "api") or app.state.api is None:
         raise HTTPException(
             status_code=401,
-            detail="API not initialized. Please set your cookies path in Settings, then restart the server. Use this extension to generate cookies.txt: https://addons.mozilla.org/addon/export-cookies-txt"
+            detail="API not initialized. Please configure your cookies.txt in settings."
         )
 
     api = app.state.api
+
+    # Check subscription before attempting library access
+    if not hasattr(api, 'active_subscription') or not api.active_subscription:
+        error_detail = "Library access requires an active Apple Music subscription. "
+        if hasattr(app.state, 'api_init_error') and app.state.api_init_error:
+            error_detail += app.state.api_init_error
+        else:
+            error_detail += "Please check your cookies.txt is valid and not expired."
+
+        raise HTTPException(
+            status_code=403,
+            detail=error_detail
+        )
 
     try:
         response = await api.get_all_library_songs(
@@ -5888,10 +6019,8 @@ async def get_library_songs(
         )
 
         if not response:
-            raise HTTPException(
-                status_code=403,
-                detail="No active subscription or library access denied"
-            )
+            # This now means truly empty library, not auth failure
+            return {"data": [], "total": 0, "next_offset": None}
 
         songs = response.get("data", [])
 
@@ -5947,6 +6076,19 @@ async def download_from_library(request_data: dict):
         )
 
     api = app.state.api
+
+    # Check active subscription
+    if not hasattr(api, 'active_subscription') or not api.active_subscription:
+        error_msg = "No active Apple Music subscription detected. "
+        if hasattr(app.state, 'api_init_error') and app.state.api_init_error:
+            error_msg += app.state.api_init_error
+        else:
+            error_msg += "Please check your cookies.txt is valid and up to date."
+
+        raise HTTPException(
+            status_code=403,
+            detail=error_msg
+        )
 
     # Construct Apple Music URL
     storefront = api.storefront
