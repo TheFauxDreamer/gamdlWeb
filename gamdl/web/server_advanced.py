@@ -2166,9 +2166,11 @@ async def root():
                 background: #007aff;
                 color: white;
                 border: none;
+                padding: 0;
                 box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
                 cursor: pointer;
                 z-index: 998;
+                display: flex;
                 align-items: center;
                 justify-content: center;
                 transition: transform 0.2s, box-shadow 0.2s;
@@ -3041,8 +3043,10 @@ async def root():
 
             <!-- Mobile Queue Toggle FAB -->
             <button id="queueToggleFAB" onclick="toggleQueuePanel()" aria-label="Toggle Queue">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 7v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7m-18 0h18M3 7l3-4h12l3 4M10 11v6m4-6v6"></path>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
                 <span class="queue-badge" style="display: none;">0</span>
             </button>
