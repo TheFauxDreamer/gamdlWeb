@@ -2910,8 +2910,8 @@ async def root():
                     clickedElement.classList.add('active');
                 }
 
-                // Show/hide tab content
-                document.querySelectorAll('.tab-content').forEach(content => {
+                // Show/hide tab content (scoped to Library view only)
+                document.querySelectorAll('#libraryView .tab-content').forEach(content => {
                     content.classList.remove('active');
                 });
                 document.getElementById(tab + 'Tab').classList.add('active');
@@ -6446,6 +6446,23 @@ async def download_podcast_episodes(session_id: str, session: dict, websocket: W
 
         await send_log(f"Downloading {len(request.urls)} podcast episode(s)...")
 
+        # Initialize progress tracking
+        if current_downloading_item:
+            with queue_lock:
+                current_downloading_item.progress_total = len(request.urls)
+                current_downloading_item.progress_current = 0
+            await broadcast_queue_update()
+
+        # Pre-cache existing files in directory for fast lookup
+        existing_files = set()
+        if output_dir.exists():
+            try:
+                existing_files = {f.name for f in output_dir.iterdir() if f.is_file()}
+                logger.info(f"Found {len(existing_files)} existing files in {output_dir}")
+            except Exception as e:
+                logger.warning(f"Could not list directory for caching: {e}")
+                # Continue anyway, will check files individually
+
         # Download each episode
         for url_index, url in enumerate(request.urls, 1):
             # Check for cancellation
@@ -6541,15 +6558,46 @@ async def download_podcast_episodes(session_id: str, session: dict, websocket: W
                     # Save to podcast-specific directory
                     filepath = output_dir / filename
 
+                    # Check if file already exists (using pre-cached set)
+                    if filename in existing_files:
+                        await send_log(f"File already exists, skipping: {filename}", "warning")
+                        logger.info(f"Podcast episode already exists: {filepath}")
+
+                        # Track skipped episode
+                        if current_downloading_item:
+                            with queue_lock:
+                                current_downloading_item.progress_current = url_index
+                                current_downloading_item.skipped_count += 1
+                            await broadcast_queue_update()
+
+                        continue
+
                     with open(filepath, 'wb') as f:
                         f.write(response.content)
+
+                    # Add to cache so subsequent checks are fast
+                    existing_files.add(filename)
 
                     await send_log(f"Downloaded: {filename}", "success")
                     logger.info(f"Podcast episode saved to: {filepath}")
 
+                    # Update progress
+                    if current_downloading_item:
+                        with queue_lock:
+                            current_downloading_item.progress_current = url_index
+                            current_downloading_item.success_count += 1
+                        await broadcast_queue_update()
+
             except Exception as e:
                 await send_log(f"Failed to download episode: {str(e)}", "error")
                 logger.error(f"Podcast download error: {e}")
+
+                # Track failed episode
+                if current_downloading_item:
+                    with queue_lock:
+                        current_downloading_item.failed_count += 1
+                    await broadcast_queue_update()
+
                 continue
 
         await send_log("All podcast downloads completed", "success")
