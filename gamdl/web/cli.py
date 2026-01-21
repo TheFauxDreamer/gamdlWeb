@@ -12,7 +12,7 @@ import click
 )
 @click.option(
     "--port",
-    default=8080,
+    default=8080,  # Change default port here
     help="Port to bind the server to",
     show_default=True,
     type=int,

@@ -1098,6 +1098,8 @@ async def root():
     <!DOCTYPE html>
     <html>
     <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
         <title>gamdl Advanced Web UI</title>
         <style>
             body {
@@ -2128,6 +2130,323 @@ async def root():
             .btn-secondary:hover {
                 background-color: #616161;
             }
+
+            /* ===================================
+               MOBILE RESPONSIVE STYLES
+               =================================== */
+
+            /* Floating Action Button (FAB) for Queue - Mobile Only */
+            #queueToggleFAB {
+                display: none; /* Hidden on desktop */
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                width: 56px;
+                height: 56px;
+                border-radius: 50%;
+                background: #007aff;
+                color: white;
+                border: none;
+                box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+                cursor: pointer;
+                z-index: 998;
+                align-items: center;
+                justify-content: center;
+                transition: transform 0.2s, box-shadow 0.2s;
+            }
+
+            #queueToggleFAB:active {
+                transform: scale(0.95);
+            }
+
+            #queueToggleFAB .queue-badge {
+                position: absolute;
+                top: -4px;
+                right: -4px;
+                background: #ff3b30;
+                color: white;
+                border-radius: 12px;
+                padding: 2px 6px;
+                font-size: 11px;
+                font-weight: bold;
+                min-width: 20px;
+                text-align: center;
+            }
+
+            /* Backdrop overlay for queue panel */
+            #queueBackdrop {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 999;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
+
+            #queueBackdrop.active {
+                display: block;
+                opacity: 1;
+            }
+
+            /* Queue close button - Mobile only */
+            #queueCloseBtn {
+                display: none;
+            }
+
+            /* Mobile Bottom Navigation - Hidden on desktop */
+            .mobile-bottom-nav {
+                display: none;
+            }
+
+            /* Desktop Navigation - Shown on desktop */
+            .desktop-nav {
+                display: flex;
+            }
+
+            /* Mobile/Tablet Breakpoint (≤1024px) */
+            @media (max-width: 1024px) {
+                /* Show FAB and hide queue by default */
+                #queueToggleFAB {
+                    display: flex;
+                }
+
+                /* Queue panel becomes full-screen overlay */
+                .queue-panel {
+                    transform: translateX(100%);
+                    width: 100%;
+                    transition: transform 0.3s ease-out;
+                    z-index: 1000;
+                }
+
+                .queue-panel.open {
+                    transform: translateX(0);
+                }
+
+                /* Remove desktop margin */
+                body {
+                    margin-right: 0 !important;
+                }
+
+                /* Show close button in queue header on mobile */
+                #queueCloseBtn {
+                    display: block;
+                    background: none;
+                    border: none;
+                    color: white;
+                    font-size: 24px;
+                    cursor: pointer;
+                    padding: 0;
+                    width: 32px;
+                    height: 32px;
+                    line-height: 1;
+                }
+            }
+
+            /* Primary Mobile Breakpoint (≤768px) */
+            @media (max-width: 768px) {
+                /* Container padding reduction + space for bottom nav */
+                .container {
+                    padding: 16px;
+                    padding-bottom: calc(70px + env(safe-area-inset-bottom));
+                }
+
+                /* Hide desktop navigation on mobile */
+                .desktop-nav {
+                    display: none !important;
+                }
+
+                /* Show mobile bottom navigation */
+                .mobile-bottom-nav {
+                    display: flex;
+                    position: fixed;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    background: white;
+                    border-top: 1px solid #e0e0e0;
+                    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+                    justify-content: space-around;
+                    z-index: 900;
+                    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+                }
+
+                .bottom-nav-item {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    background: none;
+                    border: none;
+                    padding: 4px 8px;
+                    cursor: pointer;
+                    color: #666;
+                    transition: color 0.2s ease-out;
+                    min-width: 60px;
+                    gap: 2px;
+                    position: relative;
+                    -webkit-tap-highlight-color: transparent;
+                }
+
+                .bottom-nav-item.active {
+                    color: #007aff;
+                }
+
+                .bottom-nav-item:active {
+                    background: none;
+                    transform: scale(0.95);
+                }
+
+                /* Override global button:hover that causes persistent blue background on mobile */
+                .bottom-nav-item:hover {
+                    background: none;
+                    color: #666;  /* Keep gray unless it's the active tab */
+                }
+
+                .bottom-nav-item.active:hover {
+                    background: none;
+                    color: #007aff;  /* Active tab stays blue on hover */
+                }
+
+                /* Override any focus state backgrounds */
+                .bottom-nav-item:focus,
+                .bottom-nav-item:focus-visible {
+                    background: none;
+                    outline: none;
+                }
+
+                /* Tap color fade animation */
+                @keyframes colorPulse {
+                    0% {
+                        color: #007aff;
+                    }
+                    100% {
+                        color: #666;
+                    }
+                }
+
+                .bottom-nav-icon {
+                    width: 24px;
+                    height: 24px;
+                    stroke-width: 2;
+                }
+
+                .bottom-nav-label {
+                    font-size: 11px;
+                    font-weight: 500;
+                    white-space: nowrap;
+                }
+
+                /* Library grids - smaller tiles on mobile */
+                .library-grid {
+                    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                    gap: 12px;
+                }
+
+                /* Typography adjustments */
+                h1 {
+                    font-size: 24px;
+                }
+
+                .subtitle {
+                    font-size: 14px;
+                }
+
+                /* Form elements - stack vertically */
+                .row {
+                    grid-template-columns: 1fr;
+                    gap: 16px;
+                }
+
+                /* Buttons - larger touch targets */
+                button {
+                    min-height: 44px;
+                    font-size: 15px;
+                }
+
+                /* Modal dialogs - near full-screen */
+                .modal-content {
+                    width: 95%;
+                    max-width: 95%;
+                    max-height: 95vh;
+                }
+
+                .modal-header h2 {
+                    font-size: 20px;
+                }
+
+                .modal-close {
+                    font-size: 28px;
+                    width: 44px;
+                    height: 44px;
+                }
+
+                /* Progress stats - 2 columns on mobile */
+                .progress-stats {
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 8px;
+                }
+
+                /* Queue panel adjustments */
+                .queue-header h3 {
+                    font-size: 16px;
+                }
+
+                .queue-controls {
+                    gap: 6px;
+                }
+
+                .queue-control-btn {
+                    font-size: 12px;
+                    padding: 6px 10px;
+                }
+
+                /* Library item buttons - larger */
+                .library-item button {
+                    min-height: 40px;
+                    font-size: 14px;
+                }
+
+                /* Search container - full width */
+                .search-container {
+                    max-width: 100%;
+                    flex-direction: column;
+                }
+
+                .search-container input,
+                .search-container button {
+                    width: 100%;
+                }
+
+                /* Settings sections - start collapsed on mobile */
+                .collapsible-content {
+                    display: none;
+                }
+
+                /* Monitor stats - single column */
+                .monitor-stats {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            /* Small phones (≤428px) - extra adjustments */
+            @media (max-width: 428px) {
+                .library-grid {
+                    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                    gap: 10px;
+                }
+
+                .container {
+                    padding: 12px;
+                }
+
+                h1 {
+                    font-size: 22px;
+                }
+            }
         </style>
     </head>
     <body>
@@ -2136,13 +2455,55 @@ async def root():
             <p class="subtitle">Browse your library or download from Apple Music URLs</p>
 
             <!-- View Navigation -->
-            <div class="nav-tabs">
+            <!-- Desktop Navigation (hidden on mobile) -->
+            <div class="nav-tabs desktop-nav">
                 <button class="nav-tab active" onclick="switchView('library', this)">Library Browser</button>
                 <button class="nav-tab" onclick="switchView('downloads', this)">URL Downloads</button>
                 <button class="nav-tab" onclick="switchView('search', this)">Search</button>
                 <button class="nav-tab" onclick="switchView('monitor', this)">Monitor</button>
                 <button class="nav-tab" onclick="switchView('settings', this)" style="margin-left: auto;">Settings</button>
             </div>
+
+            <!-- Mobile Bottom Navigation (hidden on desktop) -->
+            <nav class="mobile-bottom-nav">
+                <button class="bottom-nav-item active" onclick="switchView('library', this)" data-view="library">
+                    <svg class="bottom-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg>
+                    <span class="bottom-nav-label">Library</span>
+                </button>
+                <button class="bottom-nav-item" onclick="switchView('downloads', this)" data-view="downloads">
+                    <svg class="bottom-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span class="bottom-nav-label">Downloads</span>
+                </button>
+                <button class="bottom-nav-item" onclick="switchView('search', this)" data-view="search">
+                    <svg class="bottom-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <span class="bottom-nav-label">Search</span>
+                </button>
+                <button class="bottom-nav-item" onclick="switchView('monitor', this)" data-view="monitor">
+                    <svg class="bottom-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    <span class="bottom-nav-label">Monitor</span>
+                </button>
+                <button class="bottom-nav-item" onclick="switchView('settings', this)" data-view="settings">
+                    <svg class="bottom-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M12 1v6m0 6v6"></path>
+                        <path d="m16.24 7.76-2.12 2.12m-4.24 4.24-2.12 2.12"></path>
+                        <path d="m16.24 16.24-2.12-2.12m-4.24-4.24L7.76 7.76"></path>
+                    </svg>
+                    <span class="bottom-nav-label">Settings</span>
+                </button>
+            </nav>
 
             <!-- Library Browser View -->
             <div id="libraryView" class="view-section active">
@@ -2591,6 +2952,7 @@ async def root():
             <div id="queuePanel" class="queue-panel">
                 <div class="queue-header">
                     <h3>Download Queue</h3>
+                    <button id="queueCloseBtn" onclick="closeQueuePanel()" aria-label="Close Queue">&times;</button>
                 </div>
 
                 <div class="queue-controls">
@@ -2637,6 +2999,17 @@ async def root():
                 </div>
             </div>
 
+            <!-- Mobile Queue Toggle FAB -->
+            <button id="queueToggleFAB" onclick="toggleQueuePanel()" aria-label="Toggle Queue">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 7v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7m-18 0h18M3 7l3-4h12l3 4M10 11v6m4-6v6"></path>
+                </svg>
+                <span class="queue-badge" style="display: none;">0</span>
+            </button>
+
+            <!-- Queue Backdrop (mobile only) -->
+            <div id="queueBackdrop" onclick="closeQueuePanel()"></div>
+
             <!-- Episode Modal -->
             <div id="episodeModal" class="modal" style="display:none;">
                 <div class="modal-content" style="max-width: 900px;">
@@ -2666,6 +3039,75 @@ async def root():
             let completedTracks = 0;
             let skippedTracks = 0;
             let failedTracks = 0;
+
+            // ===================================
+            // MOBILE QUEUE PANEL MANAGEMENT
+            // ===================================
+
+            // Mobile queue panel toggle
+            function toggleQueuePanel() {
+                const panel = document.getElementById('queuePanel');
+                const backdrop = document.getElementById('queueBackdrop');
+                const isOpen = panel.classList.contains('open');
+
+                if (isOpen) {
+                    closeQueuePanel();
+                } else {
+                    openQueuePanel();
+                }
+            }
+
+            function openQueuePanel() {
+                const panel = document.getElementById('queuePanel');
+                const backdrop = document.getElementById('queueBackdrop');
+                panel.classList.add('open');
+                backdrop.classList.add('active');
+                document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            }
+
+            function closeQueuePanel() {
+                const panel = document.getElementById('queuePanel');
+                const backdrop = document.getElementById('queueBackdrop');
+                panel.classList.remove('open');
+                backdrop.classList.remove('active');
+                document.body.style.overflow = ''; // Restore scrolling
+            }
+
+            // Viewport detection
+            function isMobile() {
+                return window.innerWidth <= 1024;
+            }
+
+            // Auto-close queue on desktop resize
+            window.addEventListener('resize', () => {
+                if (!isMobile()) {
+                    const panel = document.getElementById('queuePanel');
+                    if (panel && panel.classList.contains('open')) {
+                        closeQueuePanel();
+                    }
+                }
+            });
+
+            // Update FAB badge count when queue changes
+            function updateQueueBadge() {
+                const badge = document.querySelector('#queueToggleFAB .queue-badge');
+                if (!badge) return;
+
+                const queuedCount = parseInt(document.getElementById('queuedCount')?.textContent || '0');
+                const downloadingCount = parseInt(document.getElementById('downloadingCount')?.textContent || '0');
+                const totalActive = queuedCount + downloadingCount;
+
+                if (totalActive > 0) {
+                    badge.textContent = totalActive;
+                    badge.style.display = 'block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+
+            // ===================================
+            // END MOBILE QUEUE PANEL MANAGEMENT
+            // ===================================
 
             // Check API status on page load and show warning if needed
             async function checkApiStatus() {
@@ -2908,12 +3350,26 @@ async def root():
             let currentLibraryTab = 'albums';
 
             function switchView(view, clickedElement) {
-                // Update nav tabs
-                document.querySelectorAll('.nav-tabs > .nav-tab').forEach(tab => {
+                // Remove focus to prevent persistent highlight on mobile
+                if (clickedElement) {
+                    clickedElement.blur();
+                }
+
+                // Update desktop nav tabs
+                document.querySelectorAll('.desktop-nav .nav-tab').forEach(tab => {
                     tab.classList.remove('active');
                 });
-                if (clickedElement) {
+                if (clickedElement && clickedElement.classList.contains('nav-tab')) {
                     clickedElement.classList.add('active');
+                }
+
+                // Update mobile bottom nav active state
+                document.querySelectorAll('.bottom-nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                const mobileNavItem = document.querySelector(`.bottom-nav-item[data-view="${view}"]`);
+                if (mobileNavItem) {
+                    mobileNavItem.classList.add('active');
                 }
 
                 // Show/hide views
@@ -4152,7 +4608,48 @@ async def root():
             }
 
             // Load and save user preferences
-            function loadPreferences() {
+            async function loadPreferences() {
+                try {
+                    // Try to load from server first
+                    const response = await fetch('/api/config/all-settings');
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const settings = data.settings;
+
+                        // Apply server settings to UI
+                        if (settings.cookies_path !== undefined) document.getElementById('cookiesPath').value = settings.cookies_path || '';
+                        if (settings.output_path !== undefined) document.getElementById('outputPath').value = settings.output_path || '';
+                        if (settings.podcast_output_path !== undefined) document.getElementById('podcastOutputPath').value = settings.podcast_output_path || '';
+                        if (settings.song_codec !== undefined) document.getElementById('songCodec').value = settings.song_codec || '';
+                        if (settings.music_video_resolution !== undefined) document.getElementById('musicVideoResolution').value = settings.music_video_resolution || '';
+                        if (settings.cover_size !== undefined && settings.cover_size !== null) document.getElementById('coverSize').value = settings.cover_size;
+                        if (settings.cover_format !== undefined) document.getElementById('coverFormat').value = settings.cover_format || '';
+                        if (settings.no_cover !== undefined) document.getElementById('noCover').checked = settings.no_cover;
+                        if (settings.no_lyrics !== undefined) document.getElementById('noLyrics').checked = settings.no_lyrics;
+                        if (settings.extra_tags !== undefined) document.getElementById('extraTags').checked = settings.extra_tags;
+                        if (settings.include_videos_in_discography !== undefined) document.getElementById('includeVideosInDiscography').checked = settings.include_videos_in_discography;
+                        if (settings.save_playlist !== undefined) document.getElementById('savePlaylist').checked = settings.save_playlist;
+                        if (settings.enable_retry_delay !== undefined) document.getElementById('enableRetryDelay').checked = settings.enable_retry_delay;
+                        if (settings.max_retries !== undefined) document.getElementById('maxRetries').value = settings.max_retries;
+                        if (settings.retry_delay !== undefined) document.getElementById('retryDelay').value = settings.retry_delay;
+                        if (settings.song_delay !== undefined) document.getElementById('songDelay').value = settings.song_delay;
+                        if (settings.queue_item_delay !== undefined) document.getElementById('queueItemDelay').value = settings.queue_item_delay;
+                        if (settings.continue_on_error !== undefined) document.getElementById('continueOnError').checked = settings.continue_on_error;
+
+                        console.log('Settings loaded from server');
+                        return;
+                    }
+                } catch (error) {
+                    console.warn('Failed to load settings from server, falling back to localStorage:', error);
+                }
+
+                // Fallback to localStorage if server request fails
+                loadPreferencesFromLocalStorage();
+            }
+
+            // Fallback function for localStorage (renamed from original loadPreferences)
+            function loadPreferencesFromLocalStorage() {
                 // Paths
                 const cookiesPath = localStorage.getItem('gamdl_cookies_path');
                 const outputPath = localStorage.getItem('gamdl_output_path');
@@ -4202,6 +4699,8 @@ async def root():
                 if (songDelay) document.getElementById('songDelay').value = songDelay;
                 if (queueItemDelay) document.getElementById('queueItemDelay').value = queueItemDelay;
                 if (continueOnError === 'true') document.getElementById('continueOnError').checked = true;
+
+                console.log('Settings loaded from localStorage');
             }
 
             function savePreferences() {
@@ -4429,6 +4928,9 @@ async def root():
 
                 // Render queue list
                 renderQueueList(queueData.items);
+
+                // Update mobile FAB badge
+                updateQueueBadge();
             }
 
             function renderQueueList(items) {
@@ -5201,6 +5703,51 @@ async def save_all_settings_config(request_data: dict):
     save_webui_config(config)
 
     return {"success": True, "message": "All settings saved to configuration"}
+
+
+@app.get("/api/config/all-settings")
+async def get_all_settings_config():
+    """Retrieve all user settings from server-side config."""
+    config = load_webui_config()
+
+    # Return all settings with defaults for missing values
+    return {
+        "success": True,
+        "settings": {
+            # Paths
+            "cookies_path": config.get("cookies_path", ""),
+            "output_path": config.get("output_path", ""),
+            "podcast_output_path": config.get("podcast_output_path", ""),
+            "temp_path": config.get("temp_path", ""),
+            "final_path_template": config.get("final_path_template", ""),
+
+            # Audio options
+            "song_codec": config.get("song_codec", ""),
+            "music_video_codec": config.get("music_video_codec", ""),
+            "music_video_resolution": config.get("music_video_resolution", ""),
+
+            # Cover art options
+            "cover_size": config.get("cover_size", None),
+            "cover_format": config.get("cover_format", ""),
+            "no_cover": config.get("no_cover", False),
+
+            # Metadata options
+            "no_lyrics": config.get("no_lyrics", False),
+            "extra_tags": config.get("extra_tags", False),
+            "include_videos_in_discography": config.get("include_videos_in_discography", False),
+            "save_playlist": config.get("save_playlist", False),
+
+            # Retry/delay options
+            "enable_retry_delay": config.get("enable_retry_delay", True),
+            "max_retries": config.get("max_retries", 3),
+            "retry_delay": config.get("retry_delay", 60),
+            "song_delay": config.get("song_delay", 0.0),
+            "queue_item_delay": config.get("queue_item_delay", 0.0),
+
+            # Queue behavior options
+            "continue_on_error": config.get("continue_on_error", False),
+        }
+    }
 
 
 # =============================================================================
@@ -7124,7 +7671,9 @@ def main(host: str = "127.0.0.1", port: int = 8080):
     import webbrowser
     import threading
 
-    url = f"http://{host}:{port}"
+    # Use localhost for browser URL when binding to 0.0.0.0
+    browser_host = "localhost" if host == "0.0.0.0" else host
+    url = f"http://{browser_host}:{port}"
 
     print(f"\ngamdl Web UI starting...")
     print(f"Server: {url}")

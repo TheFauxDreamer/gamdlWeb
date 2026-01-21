@@ -882,7 +882,9 @@ def main(host: str = "127.0.0.1", port: int = 8080):
     import webbrowser
     import threading
 
-    url = f"http://{host}:{port}"
+    # Use localhost for browser URL when binding to 0.0.0.0
+    browser_host = "localhost" if host == "0.0.0.0" else host
+    url = f"http://{browser_host}:{port}"
 
     print(f"\ngamdl Web UI starting...")
     print(f"Server: {url}")
