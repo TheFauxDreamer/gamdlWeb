@@ -103,6 +103,9 @@ class QueueItem:
     url_count: int = 1
     progress_current: int = 0  # Current track/item being processed
     progress_total: int = 0  # Total tracks/items to process
+    success_count: int = 0  # Successfully downloaded items
+    skipped_count: int = 0  # Skipped items (already exist, not streamable)
+    failed_count: int = 0  # Failed items within this queue item
 
 # Global queue state
 download_queue: list[QueueItem] = []
@@ -768,6 +771,9 @@ def get_queue_status() -> dict:
                     "error_message": item.error_message,
                     "progress_current": item.progress_current,
                     "progress_total": item.progress_total,
+                    "success_count": item.success_count,
+                    "skipped_count": item.skipped_count,
+                    "failed_count": item.failed_count,
                 }
                 for item in download_queue
             ],
@@ -1615,6 +1621,12 @@ async def root():
                 font-size: 12px;
                 color: #666;
                 margin-bottom: 8px;
+            }
+            .queue-item-stats {
+                font-size: 12px;
+                color: #666;
+                margin-top: 4px;
+                padding: 4px 0;
             }
             .queue-item-status-icon {
                 width: 8px;
@@ -4374,6 +4386,32 @@ async def root():
                         progressInfo = ` - ${item.progress_current}/${item.progress_total} (${percentage}%)`;
                     }
 
+                    // Display detailed statistics for multi-URL downloads
+                    let statsHtml = '';
+                    if (item.url_count > 1) {
+                        const stats = [];
+                        const total = (item.success_count || 0) + (item.skipped_count || 0) + (item.failed_count || 0);
+
+                        // Show statistics for completed items
+                        if (item.status === 'completed' && total > 0) {
+                            if (item.success_count > 0) stats.push(`${item.success_count} successful`);
+                            if (item.skipped_count > 0) stats.push(`${item.skipped_count} skipped`);
+                            if (item.failed_count > 0) stats.push(`${item.failed_count} failed`);
+                        }
+                        // Show real-time statistics for downloading items
+                        else if (item.status === 'downloading' && total > 0) {
+                            const parts = [];
+                            if (item.success_count > 0) parts.push(`${item.success_count} done`);
+                            if (item.skipped_count > 0) parts.push(`${item.skipped_count} skipped`);
+                            if (item.failed_count > 0) parts.push(`${item.failed_count} failed`);
+                            if (parts.length > 0) stats.push(parts.join(', '));
+                        }
+
+                        if (stats.length > 0) {
+                            statsHtml = `<div class="queue-item-stats">${stats.join(', ')}</div>`;
+                        }
+                    }
+
                     return `
                         <div class="queue-item ${statusClass}">
                             <div class="queue-item-header">
@@ -4385,6 +4423,7 @@ async def root():
                                 <span class="queue-item-status">${statusText}${progressInfo}</span>
                             </div>
                             ${urlInfo}
+                            ${statsHtml}
                             ${errorMessage}
                             <div class="queue-item-actions">
                                 ${actionButton}
@@ -6135,8 +6174,8 @@ async def download_with_retry(
     retry_delay: int,
     websocket: WebSocket,
     session_id: str
-) -> bool:
-    """Download item with retry logic. Returns True if successful, False if all retries exhausted."""
+) -> str:
+    """Download item with retry logic. Returns 'success', 'skipped', or 'failed'."""
     import asyncio
 
     # Extract track name for retry messages
@@ -6168,16 +6207,16 @@ async def download_with_retry(
                     "message": f"Download succeeded after {attempts} retry attempt(s)",
                     "level": "success"
                 })
-            return True
+            return "success"
 
         except MediaFileExists as e:
-            # File already exists - treat as success (skip)
+            # File already exists - treat as skip
             await websocket.send_json({
                 "type": "log",
                 "message": f"Skipping: {str(e)}",
                 "level": "info"
             })
-            return True  # Skip, don't retry
+            return "skipped"  # Skip, don't retry
 
         except (NotStreamable, FormatNotAvailable) as e:
             # Permanent content issues - don't retry, log as warning and skip
@@ -6186,7 +6225,7 @@ async def download_with_retry(
                 "message": f"Content unavailable: {str(e)}",
                 "level": "warning"
             })
-            return True  # Skip, don't retry (retrying won't fix these issues)
+            return "skipped"  # Skip, don't retry (retrying won't fix these issues)
 
         except ExecutableNotFound as e:
             # Missing required executable (e.g., mp4decrypt for music videos)
@@ -6240,13 +6279,13 @@ async def download_with_retry(
                     await asyncio.sleep(retry_delay)
                 else:
                     # No retries configured, fail immediately
-                    return False
+                    return "failed"
             else:
                 # All retries exhausted
                 await safe_send_log(websocket, f"Download failed after {max_retries + 1} attempts: {error_msg}", "error")
-                return False
+                return "failed"
 
-    return False
+    return "failed"
 
 
 def is_direct_audio_url(url: str) -> bool:
@@ -6690,7 +6729,7 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
 
                     # Use retry wrapper instead of direct download
                     try:
-                        success = await download_with_retry(
+                        result = await download_with_retry(
                             downloader=downloader,
                             download_item=download_item,
                             max_retries=max_retries,
@@ -6699,14 +6738,32 @@ async def run_download_session(session_id: str, session: dict, websocket: WebSoc
                             session_id=session_id
                         )
 
-                        if success:
+                        # Track statistics for multi-URL downloads
+                        if use_url_level_progress and current_downloading_item:
+                            with queue_lock:
+                                if result == "success":
+                                    current_downloading_item.success_count += 1
+                                elif result == "skipped":
+                                    current_downloading_item.skipped_count += 1
+                                elif result == "failed":
+                                    current_downloading_item.failed_count += 1
+                            await broadcast_queue_update()
+
+                        if result == "success":
                             await send_log(f"[Track {download_index}/{len(download_queue)}] Completed: {media_title}", "success")
+                        elif result == "skipped":
+                            await send_log(f"[Track {download_index}/{len(download_queue)}] Skipped: {media_title}", "info")
                         else:
                             any_failed = True
                             await send_log(f"[Track {download_index}/{len(download_queue)}] Failed after retries: {media_title}", "error")
 
                     except ExecutableNotFound as e:
-                        # Missing executable - raise DependencyMissing to mark as failed but continue queue
+                        # Missing executable - track as failed and raise DependencyMissing
+                        if use_url_level_progress and current_downloading_item:
+                            with queue_lock:
+                                current_downloading_item.failed_count += 1
+                            await broadcast_queue_update()
+
                         error_msg = str(e)
                         if "mp4decrypt" in error_msg.lower():
                             await send_log(f"[Track {download_index}/{len(download_queue)}] Failed: mp4decrypt dependency missing", "error")
@@ -6759,7 +6816,7 @@ async def health_check():
     return {"status": "ok"}
 
 
-def main(host: str = "127.0.0.1", port: int = 8000):
+def main(host: str = "127.0.0.1", port: int = 8080):
     """Start the web server."""
     import uvicorn
     import webbrowser

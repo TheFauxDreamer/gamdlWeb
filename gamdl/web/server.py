@@ -876,7 +876,7 @@ async def health_check():
     return {"status": "ok"}
 
 
-def main(host: str = "127.0.0.1", port: int = 8000):
+def main(host: str = "127.0.0.1", port: int = 8080):
     """Start the web server."""
     import uvicorn
     import webbrowser
