@@ -1570,7 +1570,7 @@ async def root():
             .nav-tab.active {
                 background: var(--primary-color);
                 color: #ffffff;
-                font-weight: 600;
+                font-weight: 500;
             }
             .nav-tab.active:hover {
                 background: var(--primary-color);
@@ -2401,8 +2401,8 @@ async def root():
             }
 
             .color-swatch {
-                background: #f5f5f5;
-                border: 2px solid transparent;
+                background: var(--bg-tertiary);
+                border: 2px solid var(--border-primary);
                 border-radius: 8px;
                 padding: 10px;
                 cursor: pointer;
@@ -2416,8 +2416,8 @@ async def root():
             }
 
             .color-swatch.active {
-                border-color: var(--text-primary);
-                background: var(--bg-primary);
+                border-width: 3px;
+                background: var(--bg-secondary);
             }
 
             .swatch-color {
@@ -2439,53 +2439,78 @@ async def root():
 
             .dark-mode-options {
                 display: flex;
-                flex-direction: column;
-                gap: 12px;
+                flex-direction: row;
+                align-items: center;
+                gap: 4px;
                 margin-top: 15px;
+                background: var(--bg-secondary);
+                padding: 4px;
+                border-radius: 8px;
+                width: fit-content;
             }
 
-            .radio-option {
+            .dark-mode-group .radio-option {
                 display: flex;
                 align-items: center;
-                padding: 15px;
-                background: var(--bg-tertiary);
-                border: 2px solid var(--border-primary);
-                border-radius: 8px;
+                justify-content: center;
+                gap: 6px;
+                padding: 10px 16px;
+                margin: 0;
+                background: transparent;
+                border: none;
+                border-radius: 6px;
                 cursor: pointer;
-                transition: all 0.2s ease;
+                transition: all 0.2s ease-out;
+                white-space: nowrap;
+                -webkit-tap-highlight-color: transparent;
+                touch-action: manipulation;
+                position: relative;
+                flex: 1;
+                min-width: 0;
             }
 
-            .radio-option:hover {
-                background: var(--bg-hover);
-                border-color: var(--primary-color);
+            .dark-mode-group .radio-option:hover {
+                background: rgba(0, 122, 255, 0.1);
             }
 
-            .radio-option input[type="radio"] {
-                margin-right: 12px;
-                width: 18px;
-                height: 18px;
-                cursor: pointer;
+            .dark-mode-group .radio-option input[type="radio"] {
+                position: absolute;
+                opacity: 0;
+                pointer-events: none;
             }
 
-            .radio-option input[type="radio"]:checked {
-                accent-color: var(--primary-color);
+            .dark-mode-group .radio-option .theme-icon {
+                flex-shrink: 0;
+                width: 16px;
+                height: 16px;
+                color: var(--text-secondary);
+                transition: color 0.2s ease-out;
             }
 
-            .radio-content {
-                display: flex;
-                flex-direction: column;
-                gap: 4px;
-            }
-
-            .radio-label {
+            .dark-mode-group .radio-option .radio-label {
                 font-size: 15px;
                 font-weight: 500;
-                color: var(--text-primary);
+                color: var(--text-secondary);
+                transition: color 0.2s ease-out;
+                line-height: 1;
             }
 
-            .radio-description {
-                font-size: 13px;
-                color: var(--text-secondary);
+            /* Active state styling */
+            .dark-mode-group .radio-option:has(input[type="radio"]:checked) {
+                background: var(--primary-color);
+            }
+
+            .dark-mode-group .radio-option:has(input[type="radio"]:checked) .theme-icon,
+            .dark-mode-group .radio-option:has(input[type="radio"]:checked) .radio-label {
+                color: #ffffff;
+            }
+
+            .dark-mode-group .radio-option:has(input[type="radio"]:checked):hover {
+                background: var(--primary-color);
+            }
+
+            .dark-mode-group .radio-option:has(input[type="radio"]:checked):active {
+                background: #0051d5;
             }
 
             .btn-danger {
@@ -2884,16 +2909,27 @@ async def root():
                 }
 
                 /* Dark mode radio options - more compact on mobile */
-                .radio-option {
-                    padding: 12px;
+                .dark-mode-options {
+                    width: 100%;
+                    gap: 4px;
+                    padding: 4px;
                 }
 
-                .radio-label {
+                .dark-mode-group .radio-option {
+                    padding: 12px 8px;
+                    flex: 1;
+                    justify-content: center;
+                    align-items: center;
+                    gap: 6px;
+                }
+
+                .dark-mode-group .radio-option .radio-label {
                     font-size: 14px;
                 }
 
-                .radio-description {
-                    font-size: 12px;
+                .dark-mode-group .radio-option .theme-icon {
+                    width: 15px;
+                    height: 15px;
                 }
 
                 /* Scrollable tabs on mobile - hide scrollbar for cleaner look */
@@ -3322,28 +3358,44 @@ async def root():
                     <small>Choose how the interface appears</small>
 
                     <div class="dark-mode-options">
-                        <label class="radio-option">
+                        <label class="radio-option" data-theme="auto">
                             <input type="radio" name="darkMode" value="auto" checked onchange="selectDarkMode(this)">
-                            <div class="radio-content">
-                                <span class="radio-label">Automatic</span>
-                                <span class="radio-description">Follows system preference</span>
-                            </div>
+                            <svg class="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="5"></circle>
+                                <line x1="12" y1="1" x2="12" y2="3"></line>
+                                <line x1="12" y1="21" x2="12" y2="23"></line>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                                <line x1="1" y1="12" x2="3" y2="12"></line>
+                                <line x1="21" y1="12" x2="23" y2="12"></line>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                            </svg>
+                            <span class="radio-label">Auto</span>
                         </label>
 
-                        <label class="radio-option">
+                        <label class="radio-option" data-theme="light">
                             <input type="radio" name="darkMode" value="light" onchange="selectDarkMode(this)">
-                            <div class="radio-content">
-                                <span class="radio-label">Light</span>
-                                <span class="radio-description">Always use light mode</span>
-                            </div>
+                            <svg class="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="5"></circle>
+                                <line x1="12" y1="1" x2="12" y2="3"></line>
+                                <line x1="12" y1="21" x2="12" y2="23"></line>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                                <line x1="1" y1="12" x2="3" y2="12"></line>
+                                <line x1="21" y1="12" x2="23" y2="12"></line>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                            </svg>
+                            <span class="radio-label">Light</span>
                         </label>
 
-                        <label class="radio-option">
+                        <label class="radio-option" data-theme="dark">
                             <input type="radio" name="darkMode" value="dark" onchange="selectDarkMode(this)">
-                            <div class="radio-content">
-                                <span class="radio-label">Dark</span>
-                                <span class="radio-description">Always use dark mode</span>
-                            </div>
+                            <svg class="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                            </svg>
+                            <span class="radio-label">Dark</span>
                         </label>
                     </div>
 
@@ -5224,6 +5276,7 @@ async def root():
                 // Remove active class from all swatches
                 document.querySelectorAll('.color-swatch').forEach(swatch => {
                     swatch.classList.remove('active');
+                    swatch.style.borderColor = '';
                 });
 
                 // Add active class to selected swatch
@@ -5232,6 +5285,9 @@ async def root():
                 // Get selected color
                 const color = button.getAttribute('data-color');
                 selectedPrimaryColor = color;
+
+                // Set border color to match selected color
+                button.style.borderColor = color;
 
                 // Update hidden input
                 document.getElementById('primaryColor').value = color;
@@ -5366,8 +5422,10 @@ async def root():
                             document.querySelectorAll('.color-swatch').forEach(swatch => {
                                 if (swatch.getAttribute('data-color') === settings.primary_color) {
                                     swatch.classList.add('active');
+                                    swatch.style.borderColor = settings.primary_color;
                                 } else {
                                     swatch.classList.remove('active');
+                                    swatch.style.borderColor = '';
                                 }
                             });
 
@@ -5951,6 +6009,14 @@ async def root():
             // Load albums and preferences on page load
             document.addEventListener('DOMContentLoaded', () => {
                 initDarkMode();  // Initialize theme first for no flash
+
+                // Set initial color swatch border
+                const activeSwatch = document.querySelector('.color-swatch.active');
+                if (activeSwatch) {
+                    const color = activeSwatch.getAttribute('data-color');
+                    activeSwatch.style.borderColor = color;
+                }
+
                 loadPreferences();  // toggleRetryDelaySettings() is now called inside loadPreferences() after settings are loaded
                 loadLibraryAlbums();
                 startQueueRefresh();
