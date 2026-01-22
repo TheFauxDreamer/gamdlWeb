@@ -65,7 +65,11 @@ pip install -e ".[web]"
 ```
 gamdl-web --advanced
 ```
-or
+or for a custom port
+```
+python -m gamdl.web.cli --advanced --port XXXX
+```
+or for simple webUI
 ```
 gamdl-web
 ```
