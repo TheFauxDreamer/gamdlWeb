@@ -2673,6 +2673,17 @@ async def root():
                     font-size: 15px;
                 }
 
+                /* Downloads button group - stack vertically on mobile */
+                .downloads-button-group {
+                    flex-direction: column;
+                    gap: 10px;
+                }
+
+                .downloads-button-group button {
+                    width: 100%;
+                    margin: 0 !important;
+                }
+
                 /* Modal dialogs - near full-screen */
                 .modal-content {
                     width: 95%;
@@ -2955,10 +2966,10 @@ async def root():
                     <textarea id="urls" name="urls" placeholder="https://music.apple.com/us/album/...&#10;https://music.apple.com/us/playlist/..." required></textarea>
                 </div>
 
-                <div class="button-group">
+                <div class="button-group downloads-button-group">
                     <button type="submit" id="downloadBtn">Start Download</button>
                     <button type="button" id="cancelBtn" class="cancel" disabled>Cancel</button>
-                    <button type="button" onclick="window.open('https://music.apple.com/au/home', '_blank')" style="background: #FA243C; margin-left: auto;">Open Apple Music</button>
+                    <button type="button" onclick="window.open('https://music.apple.com/au/home', '_blank')" style="background: #FA243C;">Open Apple Music</button>
                 </div>
             </form>
 
