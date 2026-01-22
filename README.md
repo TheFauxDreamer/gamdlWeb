@@ -32,7 +32,8 @@ These work well enough that I haven't encountered major issues or bugs that brea
 ## ⚠️ WIP Features
 These are in "active" development and in varying states of useability. (Check the branches for these features)
 - Fixes for failed library downloads
-- Look at fallback for these failures
+- Look at fallback for library failures
+- Improve Search functionality
 
 
 ## 🗓️ Future Features
