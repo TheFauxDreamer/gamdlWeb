@@ -3115,6 +3115,7 @@ async def root():
                     <small>Creates playlist files with relative paths to downloaded tracks</small>
                 </div>
 
+                <h3>Search Options</h3>
                 <div class="form-group checkbox-group">
                     <label>
                         <input type="checkbox" id="autoSearchFallback" name="autoSearchFallback">
