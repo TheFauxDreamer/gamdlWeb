@@ -698,17 +698,23 @@ def start_monitor_scheduler():
             replace_existing=True
         )
 
-        # Add auto-clear queue job
-        auto_clear_interval = config.get("auto_clear_interval", 60)
-        monitor_scheduler.add_job(
-            auto_clear_completed_queue,
-            trigger=IntervalTrigger(minutes=auto_clear_interval),
-            id='auto_clear_queue',
-            replace_existing=True
-        )
+        # Add auto-clear queue job (only if enabled)
+        auto_clear_enabled = config.get("auto_clear_queue", False)
+        if auto_clear_enabled:
+            auto_clear_interval = config.get("auto_clear_interval", 60)
+            monitor_scheduler.add_job(
+                auto_clear_completed_queue,
+                trigger=IntervalTrigger(minutes=auto_clear_interval),
+                id='auto_clear_queue',
+                replace_existing=True
+            )
+            logger.info(f"Auto-clear queue job scheduled every {auto_clear_interval} minutes")
+        else:
+            logger.info("Auto-clear queue is disabled, job not scheduled on startup")
 
         monitor_scheduler.start()
-        logger.info(f"Monitor scheduler started successfully (playlist check: 60min, auto-clear: {auto_clear_interval}min)")
+        auto_clear_status = f"{config.get('auto_clear_interval', 60)}min" if auto_clear_enabled else "disabled"
+        logger.info(f"Monitor scheduler started successfully (playlist check: 60min, auto-clear: {auto_clear_status})")
     except Exception as e:
         logger.error(f"Failed to start monitor scheduler: {e}", exc_info=True)
 
