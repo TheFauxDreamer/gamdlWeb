@@ -30,16 +30,14 @@ These work well enough that I haven't encountered major issues or bugs that brea
 - Colour accents & dark/light mode support
 - Option to retry URL is Library download fails
 - Auto-clear queue at user set interval
+- Compact gird mode
 
 ## ⚠️ WIP Features
 These are in "active" development and in varying states of useability. (Check the branches for these features)
-- Fix for search UI.
 
 
 ## 🗓️ Future Features
 These will come in time (maybe), I don't have a timeline tho.
-- Compact grid mode
-- Add Aria labels
 
 
 -------------------------------------------------------------------------------------------------------------------------------
