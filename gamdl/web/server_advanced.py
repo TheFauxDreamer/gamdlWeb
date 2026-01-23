@@ -3172,35 +3172,35 @@ async def root():
             </div>
 
             <!-- Mobile Bottom Navigation (hidden on desktop) -->
-            <nav class="mobile-bottom-nav">
-                <button class="bottom-nav-item active" onclick="switchView('library', this)" data-view="library">
+            <nav class="mobile-bottom-nav" role="tablist">
+                <button class="bottom-nav-item active" onclick="switchView('library', this)" data-view="library" role="tab" aria-selected="true" aria-label="Navigate to Library Browser">
                     <svg class="bottom-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                     </svg>
                     <span class="bottom-nav-label">Library</span>
                 </button>
-                <button class="bottom-nav-item" onclick="switchView('monitor', this)" data-view="monitor">
+                <button class="bottom-nav-item" onclick="switchView('monitor', this)" data-view="monitor" role="tab" aria-selected="false" aria-label="Navigate to Monitor">
                     <svg class="bottom-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                     </svg>
                     <span class="bottom-nav-label">Monitor</span>
                 </button>
-                <button class="bottom-nav-item" onclick="switchView('downloads', this)" data-view="downloads">
+                <button class="bottom-nav-item" onclick="switchView('downloads', this)" data-view="downloads" role="tab" aria-selected="false" aria-label="Navigate to URL Downloads">
                     <svg class="bottom-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
                     </svg>
                     <span class="bottom-nav-label">URLs</span>
                 </button>
-                <button class="bottom-nav-item" onclick="switchView('search', this)" data-view="search">
+                <button class="bottom-nav-item" onclick="switchView('search', this)" data-view="search" role="tab" aria-selected="false" aria-label="Navigate to Search">
                     <svg class="bottom-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
                     <span class="bottom-nav-label">Search</span>
                 </button>
-                <button class="bottom-nav-item" onclick="switchView('settings', this)" data-view="settings">
+                <button class="bottom-nav-item" onclick="switchView('settings', this)" data-view="settings" role="tab" aria-selected="false" aria-label="Navigate to Settings">
                     <svg class="bottom-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -3217,39 +3217,39 @@ async def root():
                 <div id="libraryError" class="library-error" style="display:none;"></div>
 
                 <!-- Library Type Tabs -->
-                <div class="nav-tabs">
-                    <button class="nav-tab active" onclick="switchLibraryTab('albums', this)" ontouchstart="">Albums</button>
-                    <button class="nav-tab" onclick="switchLibraryTab('playlists', this)" ontouchstart="">Playlists</button>
-                    <button class="nav-tab" onclick="switchLibraryTab('songs', this)" ontouchstart="">Songs</button>
+                <div class="nav-tabs" role="tablist">
+                    <button class="nav-tab active" onclick="switchLibraryTab('albums', this)" ontouchstart="" role="tab" aria-selected="true" aria-label="View Albums">Albums</button>
+                    <button class="nav-tab" onclick="switchLibraryTab('playlists', this)" ontouchstart="" role="tab" aria-selected="false" aria-label="View Playlists">Playlists</button>
+                    <button class="nav-tab" onclick="switchLibraryTab('songs', this)" ontouchstart="" role="tab" aria-selected="false" aria-label="View Songs">Songs</button>
                 </div>
 
                 <!-- Albums Tab -->
                 <div id="albumsTab" class="tab-content active">
-                    <div id="albumsLoading" class="loading">Loading albums...</div>
-                    <div id="albumsGrid" class="library-grid"></div>
-                    <div id="albumsEmpty" class="library-empty" style="display:none;">No albums found in your library</div>
+                    <div id="albumsLoading" class="loading" role="status" aria-live="polite">Loading albums...</div>
+                    <div id="albumsGrid" class="library-grid" role="region" aria-label="Albums library"></div>
+                    <div id="albumsEmpty" class="library-empty" style="display:none;" role="status">No albums found in your library</div>
                     <div id="albumsLoadMore" class="load-more" style="display:none;">
-                        <button onclick="loadMoreAlbums()">Load More</button>
+                        <button onclick="loadMoreAlbums()" aria-label="Load more albums">Load More</button>
                     </div>
                 </div>
 
                 <!-- Playlists Tab -->
                 <div id="playlistsTab" class="tab-content">
-                    <div id="playlistsLoading" class="loading">Loading playlists...</div>
-                    <div id="playlistsGrid" class="library-grid"></div>
-                    <div id="playlistsEmpty" class="library-empty" style="display:none;">No playlists found in your library</div>
+                    <div id="playlistsLoading" class="loading" role="status" aria-live="polite">Loading playlists...</div>
+                    <div id="playlistsGrid" class="library-grid" role="region" aria-label="Playlists library"></div>
+                    <div id="playlistsEmpty" class="library-empty" style="display:none;" role="status">No playlists found in your library</div>
                     <div id="playlistsLoadMore" class="load-more" style="display:none;">
-                        <button onclick="loadMorePlaylists()">Load More</button>
+                        <button onclick="loadMorePlaylists()" aria-label="Load more playlists">Load More</button>
                     </div>
                 </div>
 
                 <!-- Songs Tab -->
                 <div id="songsTab" class="tab-content">
-                    <div id="songsLoading" class="loading">Loading songs...</div>
-                    <div id="songsGrid" class="library-grid"></div>
-                    <div id="songsEmpty" class="library-empty" style="display:none;">No songs found in your library</div>
+                    <div id="songsLoading" class="loading" role="status" aria-live="polite">Loading songs...</div>
+                    <div id="songsGrid" class="library-grid" role="region" aria-label="Songs library"></div>
+                    <div id="songsEmpty" class="library-empty" style="display:none;" role="status">No songs found in your library</div>
                     <div id="songsLoadMore" class="load-more" style="display:none;">
-                        <button onclick="loadMoreSongs()">Load More</button>
+                        <button onclick="loadMoreSongs()" aria-label="Load more songs">Load More</button>
                     </div>
                 </div>
             </div>
@@ -3265,16 +3265,16 @@ async def root():
                 </div>
 
                 <div class="button-group downloads-button-group">
-                    <button type="submit" id="downloadBtn">Start Download</button>
-                    <button type="button" id="cancelBtn" class="cancel" disabled>Cancel</button>
-                    <button type="button" onclick="window.open('https://music.apple.com/au/home', '_blank')" style="background: #FA243C;">Open Apple Music</button>
+                    <button type="submit" id="downloadBtn" aria-label="Start downloading URLs">Start Download</button>
+                    <button type="button" id="cancelBtn" class="cancel" disabled aria-label="Cancel current download">Cancel</button>
+                    <button type="button" onclick="window.open('https://music.apple.com/au/home', '_blank')" style="background: #FA243C;" aria-label="Open Apple Music in new tab">Open Apple Music</button>
                 </div>
             </form>
 
-            <div id="progressContainer" class="progress-container">
+            <div id="progressContainer" class="progress-container" role="region" aria-label="Download progress">
                 <div class="status-bar">
                     <div id="statusIndicator" class="status-indicator"></div>
-                    <div id="statusText">Idle</div>
+                    <div id="statusText" role="status" aria-live="polite">Idle</div>
                 </div>
                 <div class="progress-stats">
                     <div class="stat-item">
@@ -3298,7 +3298,7 @@ async def root():
                         <div class="stat-label">Progress</div>
                     </div>
                 </div>
-                <div id="progressLog" class="progress-log"></div>
+                <div id="progressLog" class="progress-log" role="log" aria-live="polite" aria-label="Download activity log"></div>
             </div>
             </div> <!-- End of downloadsView -->
 
@@ -3498,31 +3498,31 @@ async def root():
                     <small>Choose the color for buttons, active tabs, and highlights</small>
 
                     <div class="color-swatches">
-                        <button type="button" class="color-swatch active" data-color="#007aff" data-name="Blue" onclick="selectColorTheme(this)">
+                        <button type="button" class="color-swatch active" data-color="#007aff" data-name="Blue" onclick="selectColorTheme(this)" aria-label="Select Blue theme">
                             <div class="swatch-color" style="background: #007aff;"></div>
                             <div class="swatch-name">Blue</div>
                         </button>
-                        <button type="button" class="color-swatch" data-color="#8e44ad" data-name="Purple" onclick="selectColorTheme(this)">
+                        <button type="button" class="color-swatch" data-color="#8e44ad" data-name="Purple" onclick="selectColorTheme(this)" aria-label="Select Purple theme">
                             <div class="swatch-color" style="background: #8e44ad;"></div>
                             <div class="swatch-name">Purple</div>
                         </button>
-                        <button type="button" class="color-swatch" data-color="#34c759" data-name="Green" onclick="selectColorTheme(this)">
+                        <button type="button" class="color-swatch" data-color="#34c759" data-name="Green" onclick="selectColorTheme(this)" aria-label="Select Green theme">
                             <div class="swatch-color" style="background: #34c759;"></div>
                             <div class="swatch-name">Green</div>
                         </button>
-                        <button type="button" class="color-swatch" data-color="#ff9500" data-name="Orange" onclick="selectColorTheme(this)">
+                        <button type="button" class="color-swatch" data-color="#ff9500" data-name="Orange" onclick="selectColorTheme(this)" aria-label="Select Orange theme">
                             <div class="swatch-color" style="background: #ff9500;"></div>
                             <div class="swatch-name">Orange</div>
                         </button>
-                        <button type="button" class="color-swatch" data-color="#ff2d55" data-name="Pink" onclick="selectColorTheme(this)">
+                        <button type="button" class="color-swatch" data-color="#ff2d55" data-name="Pink" onclick="selectColorTheme(this)" aria-label="Select Pink theme">
                             <div class="swatch-color" style="background: #ff2d55;"></div>
                             <div class="swatch-name">Pink</div>
                         </button>
-                        <button type="button" class="color-swatch" data-color="#5ac8fa" data-name="Teal" onclick="selectColorTheme(this)">
+                        <button type="button" class="color-swatch" data-color="#5ac8fa" data-name="Teal" onclick="selectColorTheme(this)" aria-label="Select Teal theme">
                             <div class="swatch-color" style="background: #5ac8fa;"></div>
                             <div class="swatch-name">Teal</div>
                         </button>
-                        <button type="button" class="color-swatch" data-color="#ff3b30" data-name="Red" onclick="selectColorTheme(this)">
+                        <button type="button" class="color-swatch" data-color="#ff3b30" data-name="Red" onclick="selectColorTheme(this)" aria-label="Select Red theme">
                             <div class="swatch-color" style="background: #ff3b30;"></div>
                             <div class="swatch-name">Red</div>
                         </button>
@@ -3537,7 +3537,7 @@ async def root():
                     <small>Choose how the interface appears</small>
 
                     <div class="dark-mode-options">
-                        <label class="radio-option" data-theme="auto">
+                        <label class="radio-option" data-theme="auto" aria-label="Select auto dark mode">
                             <input type="radio" name="darkMode" value="auto" checked onchange="selectDarkMode(this)">
                             <svg class="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="5"></circle>
@@ -3553,7 +3553,7 @@ async def root():
                             <span class="radio-label">Auto</span>
                         </label>
 
-                        <label class="radio-option" data-theme="light">
+                        <label class="radio-option" data-theme="light" aria-label="Select light mode">
                             <input type="radio" name="darkMode" value="light" onchange="selectDarkMode(this)">
                             <svg class="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="5"></circle>
@@ -3569,7 +3569,7 @@ async def root():
                             <span class="radio-label">Light</span>
                         </label>
 
-                        <label class="radio-option" data-theme="dark">
+                        <label class="radio-option" data-theme="dark" aria-label="Select dark mode">
                             <input type="radio" name="darkMode" value="dark" onchange="selectDarkMode(this)">
                             <svg class="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -3587,7 +3587,7 @@ async def root():
                     <small>Choose how much content to display in grids</small>
 
                     <div class="compact-mode-options">
-                        <label class="radio-option" data-mode="normal">
+                        <label class="radio-option" data-mode="normal" aria-label="Select normal grid density">
                             <input type="radio" name="compactMode" value="normal" checked onchange="selectCompactMode(this)">
                             <svg class="mode-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="3" y="3" width="7" height="7"></rect>
@@ -3598,7 +3598,7 @@ async def root():
                             <span class="radio-label">Normal</span>
                         </label>
 
-                        <label class="radio-option" data-mode="compact">
+                        <label class="radio-option" data-mode="compact" aria-label="Select compact grid density">
                             <input type="radio" name="compactMode" value="compact" onchange="selectCompactMode(this)">
                             <svg class="mode-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="2" y="2" width="6" height="6"></rect>
@@ -3619,7 +3619,7 @@ async def root():
                 </div>
 
                 <div class="button-group">
-                    <button type="button" onclick="saveAllSettings()">Save Settings</button>
+                    <button type="button" onclick="saveAllSettings()" aria-label="Save all settings">Save Settings</button>
                 </div>
             </div>
 
@@ -3658,8 +3658,8 @@ async def root():
                                     </label>
                                     <small class="toggle-label">Pause/Resume Monitoring</small>
                                 </div>
-                                <button onclick="manualCheckPlaylist()" class="btn-secondary">Check Now</button>
-                                <button onclick="stopMonitoring()" class="btn-danger">Stop Monitoring</button>
+                                <button onclick="manualCheckPlaylist()" class="btn-secondary" aria-label="Manually check playlist for new tracks">Check Now</button>
+                                <button onclick="stopMonitoring()" class="btn-danger" aria-label="Stop monitoring playlist">Stop Monitoring</button>
                             </div>
                         </div>
 
@@ -3687,7 +3687,7 @@ async def root():
                 <!-- Activity Log -->
                 <div class="activity-log-section">
                     <h3>Activity Log</h3>
-                    <div id="activityLog" class="activity-log">
+                    <div id="activityLog" class="activity-log" role="log" aria-live="polite" aria-label="Monitor activity log">
                         <p class="activity-empty">No activity yet</p>
                     </div>
                 </div>
@@ -3701,29 +3701,29 @@ async def root():
                 <div class="search-container">
                     <input type="text" id="searchInput" placeholder="Search for artists, albums, or songs..."
                            onkeypress="if(event.key === 'Enter') performSearch()">
-                    <button onclick="performSearch()" class="btn-primary">Search</button>
+                    <button onclick="performSearch()" class="btn-primary" aria-label="Perform search">Search</button>
                 </div>
 
                 <!-- Search Result Tabs -->
-                <div class="nav-tabs" style="margin-top: 20px;">
-                    <button class="nav-tab active" onclick="switchSearchTab('all', this)" ontouchstart="">All</button>
-                    <button class="nav-tab" onclick="switchSearchTab('songs', this)" ontouchstart="">Songs</button>
-                    <button class="nav-tab" onclick="switchSearchTab('albums', this)" ontouchstart="">Albums</button>
-                    <button class="nav-tab" onclick="switchSearchTab('artists', this)" ontouchstart="">Artists</button>
-                    <button class="nav-tab" onclick="switchSearchTab('playlists', this)" ontouchstart="">Playlists</button>
-                    <button class="nav-tab" onclick="switchSearchTab('music-videos', this)" ontouchstart="">Music Videos</button>
-                    <button class="nav-tab" onclick="switchSearchTab('podcasts', this)" ontouchstart="">Podcasts</button>
+                <div class="nav-tabs" style="margin-top: 20px;" role="tablist">
+                    <button class="nav-tab active" onclick="switchSearchTab('all', this)" ontouchstart="" role="tab" aria-selected="true" aria-label="View all search results">All</button>
+                    <button class="nav-tab" onclick="switchSearchTab('songs', this)" ontouchstart="" role="tab" aria-selected="false" aria-label="View song search results">Songs</button>
+                    <button class="nav-tab" onclick="switchSearchTab('albums', this)" ontouchstart="" role="tab" aria-selected="false" aria-label="View album search results">Albums</button>
+                    <button class="nav-tab" onclick="switchSearchTab('artists', this)" ontouchstart="" role="tab" aria-selected="false" aria-label="View artist search results">Artists</button>
+                    <button class="nav-tab" onclick="switchSearchTab('playlists', this)" ontouchstart="" role="tab" aria-selected="false" aria-label="View playlist search results">Playlists</button>
+                    <button class="nav-tab" onclick="switchSearchTab('music-videos', this)" ontouchstart="" role="tab" aria-selected="false" aria-label="View music video search results">Music Videos</button>
+                    <button class="nav-tab" onclick="switchSearchTab('podcasts', this)" ontouchstart="" role="tab" aria-selected="false" aria-label="View podcast search results">Podcasts</button>
                 </div>
 
                 <!-- Error Display -->
                 <div id="searchError" class="error-message" style="display:none;"></div>
 
                 <!-- Search Results Container -->
-                <div id="searchResults">
+                <div id="searchResults" role="region" aria-label="Search results">
                     <!-- All Results Tab -->
                     <div id="allTab" class="tab-content active">
-                        <div id="allLoading" class="loading">Searching...</div>
-                        <div id="allEmpty" class="library-empty" style="display:none;">
+                        <div id="allLoading" class="loading" role="status" aria-live="polite">Searching...</div>
+                        <div id="allEmpty" class="library-empty" style="display:none;" role="status">
                             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
                                 <circle cx="11" cy="11" r="8"></circle>
                                 <path d="m21 21-4.35-4.35"></path>
@@ -3736,49 +3736,49 @@ async def root():
 
                     <!-- Songs Tab -->
                     <div id="songsSearchTab" class="tab-content">
-                        <div id="songsSearchLoading" class="loading">Loading songs...</div>
-                        <div id="songsSearchEmpty" class="library-empty" style="display:none;">
+                        <div id="songsSearchLoading" class="loading" role="status" aria-live="polite">Loading songs...</div>
+                        <div id="songsSearchEmpty" class="library-empty" style="display:none;" role="status">
                             <p>No songs found</p>
                         </div>
                         <div id="songsSearchGrid" class="library-grid"></div>
                         <div id="songsSearchLoadMore" class="load-more" style="display:none;">
-                            <button onclick="loadMoreSearchResults('songs')">Load More</button>
+                            <button onclick="loadMoreSearchResults('songs')" aria-label="Load more song search results">Load More</button>
                         </div>
                     </div>
 
                     <!-- Albums Tab -->
                     <div id="albumsSearchTab" class="tab-content">
-                        <div id="albumsSearchLoading" class="loading">Loading albums...</div>
-                        <div id="albumsSearchEmpty" class="library-empty" style="display:none;">
+                        <div id="albumsSearchLoading" class="loading" role="status" aria-live="polite">Loading albums...</div>
+                        <div id="albumsSearchEmpty" class="library-empty" style="display:none;" role="status">
                             <p>No albums found</p>
                         </div>
                         <div id="albumsSearchGrid" class="library-grid"></div>
                         <div id="albumsSearchLoadMore" class="load-more" style="display:none;">
-                            <button onclick="loadMoreSearchResults('albums')">Load More</button>
+                            <button onclick="loadMoreSearchResults('albums')" aria-label="Load more album search results">Load More</button>
                         </div>
                     </div>
 
                     <!-- Artists Tab -->
                     <div id="artistsSearchTab" class="tab-content">
-                        <div id="artistsSearchLoading" class="loading">Loading artists...</div>
-                        <div id="artistsSearchEmpty" class="library-empty" style="display:none;">
+                        <div id="artistsSearchLoading" class="loading" role="status" aria-live="polite">Loading artists...</div>
+                        <div id="artistsSearchEmpty" class="library-empty" style="display:none;" role="status">
                             <p>No artists found</p>
                         </div>
                         <div id="artistsSearchGrid" class="library-grid"></div>
                         <div id="artistsSearchLoadMore" class="load-more" style="display:none;">
-                            <button onclick="loadMoreSearchResults('artists')">Load More</button>
+                            <button onclick="loadMoreSearchResults('artists')" aria-label="Load more artist search results">Load More</button>
                         </div>
                     </div>
 
                     <!-- Playlists Tab -->
                     <div id="playlistsSearchTab" class="tab-content">
-                        <div id="playlistsSearchLoading" class="loading">Loading playlists...</div>
-                        <div id="playlistsSearchEmpty" class="library-empty" style="display:none;">
+                        <div id="playlistsSearchLoading" class="loading" role="status" aria-live="polite">Loading playlists...</div>
+                        <div id="playlistsSearchEmpty" class="library-empty" style="display:none;" role="status">
                             <p>No playlists found</p>
                         </div>
                         <div id="playlistsSearchGrid" class="library-grid"></div>
                         <div id="playlistsSearchLoadMore" class="load-more" style="display:none;">
-                            <button onclick="loadMoreSearchResults('playlists')">Load More</button>
+                            <button onclick="loadMoreSearchResults('playlists')" aria-label="Load more playlist search results">Load More</button>
                         </div>
                     </div>
 
@@ -3792,46 +3792,46 @@ async def root():
                                 add to your system PATH, and restart the server. Downloads will fail without it.
                             </small>
                         </div>
-                        <div id="musicVideosSearchLoading" class="loading">Loading music videos...</div>
-                        <div id="musicVideosSearchEmpty" class="library-empty" style="display:none;">
+                        <div id="musicVideosSearchLoading" class="loading" role="status" aria-live="polite">Loading music videos...</div>
+                        <div id="musicVideosSearchEmpty" class="library-empty" style="display:none;" role="status">
                             <p>No music videos found</p>
                         </div>
                         <div id="musicVideosSearchGrid" class="library-grid"></div>
                         <div id="musicVideosSearchLoadMore" class="load-more" style="display:none;">
-                            <button onclick="loadMoreSearchResults('music-videos')">Load More</button>
+                            <button onclick="loadMoreSearchResults('music-videos')" aria-label="Load more music video search results">Load More</button>
                         </div>
                     </div>
 
                     <!-- Podcasts Tab -->
                     <div id="podcastsSearchTab" class="tab-content">
-                        <div id="podcastsSearchLoading" class="loading">Loading podcasts...</div>
-                        <div id="podcastsSearchEmpty" class="library-empty" style="display:none;">
+                        <div id="podcastsSearchLoading" class="loading" role="status" aria-live="polite">Loading podcasts...</div>
+                        <div id="podcastsSearchEmpty" class="library-empty" style="display:none;" role="status">
                             <p>No podcasts found</p>
                         </div>
                         <div id="podcastsSearchGrid" class="library-grid"></div>
                         <div id="podcastsSearchLoadMore" class="load-more" style="display:none;">
-                            <button onclick="loadMoreSearchResults('podcasts')">Load More</button>
+                            <button onclick="loadMoreSearchResults('podcasts')" aria-label="Load more podcast search results">Load More</button>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Queue Side Panel -->
-            <div id="queuePanel" class="queue-panel">
+            <div id="queuePanel" class="queue-panel" role="complementary" aria-label="Download queue panel">
                 <div class="queue-header">
                     <h3>Download Queue</h3>
                     <button id="queueCloseBtn" onclick="closeQueuePanel()" aria-label="Close Queue">&times;</button>
                 </div>
 
                 <div class="queue-controls">
-                    <button id="pauseQueueBtn" onclick="pauseQueue()" class="queue-control-btn">
+                    <button id="pauseQueueBtn" onclick="pauseQueue()" class="queue-control-btn" aria-label="Pause download queue">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="6" y="4" width="4" height="16"></rect>
                             <rect x="14" y="4" width="4" height="16"></rect>
                         </svg>
                         Pause
                     </button>
-                    <button onclick="clearCompleted()" class="queue-control-btn clear-btn">
+                    <button onclick="clearCompleted()" class="queue-control-btn clear-btn" aria-label="Clear completed downloads from queue">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="3 6 5 6 21 6"></polyline>
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -3840,18 +3840,18 @@ async def root():
                     </button>
                 </div>
 
-                <div class="queue-status">
+                <div class="queue-status" role="status" aria-label="Queue statistics">
                     <div class="queue-stat">
                         <span class="queue-stat-label">Queued:</span>
-                        <span id="queuedCount" class="queue-stat-value">0</span>
+                        <span id="queuedCount" class="queue-stat-value" aria-label="Number of queued downloads">0</span>
                     </div>
                     <div class="queue-stat">
                         <span class="queue-stat-label">Downloading:</span>
-                        <span id="downloadingCount" class="queue-stat-value">0</span>
+                        <span id="downloadingCount" class="queue-stat-value" aria-label="Number of active downloads">0</span>
                     </div>
                     <div class="queue-stat">
                         <span class="queue-stat-label">Completed:</span>
-                        <span id="completedCount" class="queue-stat-value">0</span>
+                        <span id="completedCount" class="queue-stat-value" aria-label="Number of completed downloads">0</span>
                     </div>
                 </div>
 
@@ -3881,11 +3881,11 @@ async def root():
             <div id="queueBackdrop" onclick="closeQueuePanel()"></div>
 
             <!-- Episode Modal -->
-            <div id="episodeModal" class="modal" style="display:none;">
+            <div id="episodeModal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="episodeModalTitle">
                 <div class="modal-content" style="max-width: 900px;">
                     <div class="modal-header">
                         <h3 id="episodeModalTitle">Podcast Episodes</h3>
-                        <button onclick="closeEpisodeModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-secondary);">&times;</button>
+                        <button onclick="closeEpisodeModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-secondary);" aria-label="Close episode modal">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div id="episodeLoading" class="loading" style="display:none;">Loading episodes...</div>
@@ -3895,8 +3895,8 @@ async def root():
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button onclick="downloadAllPodcastEpisodes()" class="btn-primary">Download All Episodes</button>
-                        <button onclick="closeEpisodeModal()" class="btn-secondary">Close</button>
+                        <button onclick="downloadAllPodcastEpisodes()" class="btn-primary" aria-label="Download all podcast episodes">Download All Episodes</button>
+                        <button onclick="closeEpisodeModal()" class="btn-secondary" aria-label="Close episode list">Close</button>
                     </div>
                 </div>
             </div>
@@ -4227,20 +4227,17 @@ async def root():
 
                 // Update desktop nav tabs
                 document.querySelectorAll('.desktop-nav .nav-tab').forEach(tab => {
-                    tab.classList.remove('active');
+                    const isActive = tab === clickedElement;
+                    tab.classList.toggle('active', isActive);
+                    tab.setAttribute('aria-selected', isActive);
                 });
-                if (clickedElement && clickedElement.classList.contains('nav-tab')) {
-                    clickedElement.classList.add('active');
-                }
 
                 // Update mobile bottom nav active state
                 document.querySelectorAll('.bottom-nav-item').forEach(item => {
-                    item.classList.remove('active');
+                    const isActive = item.getAttribute('data-view') === view;
+                    item.classList.toggle('active', isActive);
+                    item.setAttribute('aria-selected', isActive);
                 });
-                const mobileNavItem = document.querySelector(`.bottom-nav-item[data-view="${view}"]`);
-                if (mobileNavItem) {
-                    mobileNavItem.classList.add('active');
-                }
 
                 // Show/hide views
                 document.getElementById('libraryView').classList.toggle('active', view === 'library');
@@ -4271,10 +4268,11 @@ async def root():
             function switchLibraryTab(tab, clickedElement) {
                 // Update tabs
                 document.querySelectorAll('#libraryView .nav-tabs > .nav-tab').forEach(t => {
-                    t.classList.remove('active');
+                    const isActive = t === clickedElement;
+                    t.classList.toggle('active', isActive);
+                    t.setAttribute('aria-selected', isActive);
                 });
                 if (clickedElement) {
-                    clickedElement.classList.add('active');
                     clickedElement.blur();
                 }
 
@@ -4444,6 +4442,9 @@ async def root():
                 const div = document.createElement('div');
                 div.className = 'library-item';
 
+                // Add ARIA label to library item
+                div.setAttribute('aria-label', `${item.name} by ${item.artist || ''}`);
+
                 // Create artwork container with fixed aspect ratio
                 const artworkContainer = document.createElement('div');
                 artworkContainer.className = 'library-item-artwork';
@@ -4478,6 +4479,7 @@ async def root():
                         const mainBtn = document.createElement('button');
                         mainBtn.textContent = 'Library Tracks';
                         mainBtn.className = 'btn-primary';
+                        mainBtn.setAttribute('aria-label', `View tracks for ${item.name}`);
                         mainBtn.onclick = (e) => {
                             e.stopPropagation();
                             downloadLibraryItem(item.id, type, item.name, item.artist, false);
@@ -4486,6 +4488,7 @@ async def root():
                         const fullBtn = document.createElement('button');
                         fullBtn.textContent = 'Full Album';
                         fullBtn.className = 'btn-secondary';
+                        fullBtn.setAttribute('aria-label', `Download full album ${item.name}`);
                         fullBtn.onclick = (e) => {
                             e.stopPropagation();
                             downloadLibraryItem(item.id, type, item.name, item.artist, true);
@@ -4498,6 +4501,7 @@ async def root():
                         const btn = document.createElement('button');
                         btn.textContent = 'Download';
                         btn.className = 'btn-primary';
+                        btn.setAttribute('aria-label', `Download playlist ${item.name}`);
                         btn.onclick = (e) => {
                             e.stopPropagation();
                             downloadLibraryItem(item.id, type, item.name, item.artist, false);
@@ -4514,6 +4518,7 @@ async def root():
                     // For songs, just a single download button
                     const btn = document.createElement('button');
                     btn.textContent = 'Download';
+                    btn.setAttribute('aria-label', `Download song ${item.name}`);
                     btn.onclick = () => downloadLibraryItem(item.id, type, item.name, item.artist, false);
 
                     div.appendChild(artworkContainer);
@@ -4775,6 +4780,7 @@ async def root():
                     viewEpisodesBtn.textContent = 'View Episodes';
                     viewEpisodesBtn.className = 'btn-primary';
                     viewEpisodesBtn.style.width = '100%';
+                    viewEpisodesBtn.setAttribute('aria-label', `View episodes for ${item.name}`);
                     viewEpisodesBtn.onclick = () => viewPodcastEpisodes(item.id, item.name);
                     btnContainer.appendChild(viewEpisodesBtn);
 
@@ -4787,6 +4793,7 @@ async def root():
                     downloadBtn.textContent = 'Download';
                     downloadBtn.className = 'btn-primary';
                     downloadBtn.style.width = '100%';
+                    downloadBtn.setAttribute('aria-label', `Download ${item.name}`);
                     downloadBtn.onclick = () => downloadSearchResult(item, type);
                     btnContainer.appendChild(downloadBtn);
 
@@ -4804,6 +4811,7 @@ async def root():
                     discographyBtn.textContent = 'Download Discography';
                     discographyBtn.className = 'btn-primary';
                     discographyBtn.style.width = '100%';
+                    discographyBtn.setAttribute('aria-label', `Download discography for ${item.name}`);
                     discographyBtn.onclick = () => downloadArtistDiscography(item);
                     btnContainer.appendChild(discographyBtn);
 
@@ -4812,6 +4820,7 @@ async def root():
                     viewBtn.textContent = 'View All Content';
                     viewBtn.className = 'btn-secondary';
                     viewBtn.style.width = '100%';
+                    viewBtn.setAttribute('aria-label', `View all content by ${item.name}`);
                     viewBtn.onclick = () => viewArtistContent(item);
                     btnContainer.appendChild(viewBtn);
 
@@ -5030,6 +5039,7 @@ async def root():
                         const checkbox = document.createElement('input');
                         checkbox.type = 'checkbox';
                         checkbox.setAttribute('data-url', album.url);
+                        checkbox.setAttribute('aria-label', `Select album ${album.name} for download`);
                         checkbox.onchange = function() { toggleArtistItemSelection(this); };
                         checkbox.style.position = 'absolute';
                         checkbox.style.top = '10px';
@@ -5082,6 +5092,7 @@ async def root():
                             const checkbox = document.createElement('input');
                             checkbox.type = 'checkbox';
                             checkbox.setAttribute('data-url', video.url);
+                            checkbox.setAttribute('aria-label', `Select music video ${video.name} for download`);
                             checkbox.onchange = function() { toggleArtistItemSelection(this); };
                             checkbox.style.position = 'absolute';
                             checkbox.style.top = '10px';
@@ -5202,22 +5213,24 @@ async def root():
 
             function switchSearchTab(tab, clickedElement) {
                 const tabs = document.querySelectorAll('#searchView .nav-tabs > .nav-tab');
-                tabs.forEach(t => t.classList.remove('active'));
-                if (clickedElement) {
-                    clickedElement.classList.add('active');
-                    clickedElement.blur();
-                } else {
-                    tabs.forEach(t => {
+                tabs.forEach(t => {
+                    let isActive = false;
+                    if (clickedElement) {
+                        isActive = t === clickedElement;
+                    } else {
                         const tabText = t.textContent.toLowerCase();
-                        if ((tab === 'songs' && tabText === 'songs') ||
-                            (tab === 'albums' && tabText === 'albums') ||
-                            (tab === 'artists' && tabText === 'artists') ||
-                            (tab === 'playlists' && tabText === 'playlists') ||
-                            (tab === 'podcasts' && tabText === 'podcasts') ||
-                            (tab === 'all' && tabText === 'all')) {
-                            t.classList.add('active');
-                        }
-                    });
+                        isActive = (tab === 'songs' && tabText === 'songs') ||
+                                   (tab === 'albums' && tabText === 'albums') ||
+                                   (tab === 'artists' && tabText === 'artists') ||
+                                   (tab === 'playlists' && tabText === 'playlists') ||
+                                   (tab === 'podcasts' && tabText === 'podcasts') ||
+                                   (tab === 'all' && tabText === 'all');
+                    }
+                    t.classList.toggle('active', isActive);
+                    t.setAttribute('aria-selected', isActive);
+                });
+                if (clickedElement) {
+                    clickedElement.blur();
                 }
 
                 document.getElementById('allTab').classList.toggle('active', tab === 'all');
@@ -5363,6 +5376,12 @@ async def root():
                     const episodeDiv = document.createElement('div');
                     episodeDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee;';
 
+                    // Add ARIA role and label to episode
+                    const date = episode.date ? new Date(episode.date).toLocaleDateString() : '';
+                    const duration = episode.duration ? ` • ${Math.floor(episode.duration / 60)} min` : '';
+                    episodeDiv.setAttribute('role', 'article');
+                    episodeDiv.setAttribute('aria-label', `${episode.title} - ${date}${duration}`);
+
                     const infoDiv = document.createElement('div');
                     infoDiv.style.flex = '1';
 
@@ -5373,8 +5392,6 @@ async def root():
 
                     const meta = document.createElement('div');
                     meta.style.cssText = 'font-size: 13px; color: var(--text-secondary);';
-                    const date = episode.date ? new Date(episode.date).toLocaleDateString() : '';
-                    const duration = episode.duration ? ` • ${Math.floor(episode.duration / 60)} min` : '';
                     meta.textContent = `${date}${duration}`;
                     infoDiv.appendChild(meta);
 
@@ -5384,6 +5401,7 @@ async def root():
                     downloadBtn.textContent = 'Download';
                     downloadBtn.className = 'btn-primary';
                     downloadBtn.style.marginLeft = '15px';
+                    downloadBtn.setAttribute('aria-label', `Download episode ${episode.title}`);
                     downloadBtn.onclick = () => downloadPodcastEpisode(episode.url, episode.title, episode.date);
                     episodeDiv.appendChild(downloadBtn);
 
@@ -6097,9 +6115,9 @@ async def root():
 
                     let actionButton = '';
                     if (item.status === 'queued') {
-                        actionButton = `<button class="queue-item-remove" onclick="removeQueueItem('${item.id}')">Remove</button>`;
+                        actionButton = `<button class="queue-item-remove" onclick="removeQueueItem('${item.id}')" aria-label="Remove ${escapeHtml(item.display_title)} from queue">Remove</button>`;
                     } else if (item.status === 'failed') {
-                        actionButton = `<button class="queue-item-remove" onclick="removeQueueItem('${item.id}')">Remove</button>`;
+                        actionButton = `<button class="queue-item-remove" onclick="removeQueueItem('${item.id}')" aria-label="Remove ${escapeHtml(item.display_title)} from queue">Remove</button>`;
                     }
                     // Note: No "View Progress" button for downloading items since they run in background without WebSocket
 
@@ -6161,7 +6179,7 @@ async def root():
                     }
 
                     return `
-                        <div class="queue-item ${statusClass}">
+                        <div class="queue-item ${statusClass}" role="listitem" aria-label="Download: ${escapeHtml(item.display_title)} - ${statusText}">
                             <div class="queue-item-header">
                                 <span class="queue-item-icon">${statusIcon}</span>
                                 <span class="queue-item-title">${escapeHtml(item.display_title)}</span>
@@ -6680,11 +6698,11 @@ async def root():
         </script>
 
         <!-- Artist Content Modal -->
-        <div id="artistModal" class="modal" style="display:none;">
+        <div id="artistModal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="artistModalTitle">
             <div class="modal-content">
                 <div class="modal-header">
                     <h2 id="artistModalTitle">Artist Content</h2>
-                    <button class="modal-close" onclick="closeArtistModal()">&times;</button>
+                    <button class="modal-close" onclick="closeArtistModal()" aria-label="Close artist modal">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div id="artistModalLoading" class="loading">
@@ -6709,8 +6727,8 @@ async def root():
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button onclick="downloadSelectedArtistContent()" class="btn-primary">Download Selected</button>
-                    <button onclick="closeArtistModal()" class="btn-secondary">Close</button>
+                    <button onclick="downloadSelectedArtistContent()" class="btn-primary" aria-label="Download selected artist content">Download Selected</button>
+                    <button onclick="closeArtistModal()" class="btn-secondary" aria-label="Close artist content selector">Close</button>
                 </div>
             </div>
         </div>
