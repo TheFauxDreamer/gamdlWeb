@@ -40,6 +40,11 @@ These are in "active" development and in varying states of useability. (Check th
 These will come in time (maybe), I don't have a timeline tho.
 
 
+## 🚨 Known Issues
+These are features that were finalised but have degraded performance following a change.
+
+- Playlist deduplication for large playlists (10,000+) has caused a infinite processing loop for playlists longer that 1 page.
+
 -------------------------------------------------------------------------------------------------------------------------------
 
 ## Installation
