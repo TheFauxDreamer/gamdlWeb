@@ -6,3 +6,4 @@ __pycache__
 !pyproject.toml
 !README.md
 !uv.lock
+gamdl/.DS_Store
