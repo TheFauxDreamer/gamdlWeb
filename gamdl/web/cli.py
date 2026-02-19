@@ -1,5 +1,35 @@
 """CLI entry point for gamdl web UI."""
 
+import sys
+
+
+def _check_dependencies():
+    """Check that required dependencies are installed using only stdlib."""
+    required = ["click", "httpx", "fastapi", "uvicorn"]
+    missing = []
+    for module in required:
+        try:
+            __import__(module)
+        except ImportError:
+            missing.append(module)
+    if missing:
+        print("")
+        print("=" * 60)
+        print("  Looks like you're missing some dependencies!")
+        print(f"  Missing: {', '.join(missing)}")
+        print("")
+        print("  Run this command to install them:")
+        print("")
+        print('    pip install -e ".[web]"')
+        print("")
+        print("  Then try launching again.")
+        print("=" * 60)
+        print("")
+        sys.exit(1)
+
+
+_check_dependencies()
+
 import click
 
 
