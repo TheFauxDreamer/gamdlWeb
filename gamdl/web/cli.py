@@ -20,7 +20,7 @@ def _check_dependencies():
         print("")
         print("  Run this command to install them:")
         print("")
-        print('    pip install -e ".[web]"')
+        print('    python -m pip install -e ".[web]"')
         print("")
         print("  Then try launching again.")
         print("=" * 60)

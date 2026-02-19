@@ -58,7 +58,7 @@ These will come in time (maybe), I don't have a timeline tho.
 
 6. Enter the following into the Terminal to setup the tool & download the essential dependencies:
 ```
-pip install -e ".[web]"
+python -m pip install -e ".[web]"
 ```
 
 7. Once complete, in the Terminal type:
